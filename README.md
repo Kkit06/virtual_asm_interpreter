@@ -1,2 +1,2 @@
-# virtual_asm_interpreter
+# Virtual ASM Interpreter
 An interpreter that runs asm code in a virtual machine
