@@ -14,6 +14,18 @@ class Stack {
             delete[] data;
         }
 
+        int getTopIndex() const {
+            return topIndex;
+        }
+        
+        int getCapacity() const {
+            return capacity;
+        }
+
+        bool isEmpty() const {
+            return topIndex == -1;
+        }
+
     private:
         T* data;        // Pointer to stack array
         int capacity;   // Maximum size of the stack array
