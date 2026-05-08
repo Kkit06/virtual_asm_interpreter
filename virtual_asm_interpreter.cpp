@@ -14,6 +14,16 @@ class Stack {
             delete[] data;
         }
 
+        // Stores value into the stack
+        void push(T value) {
+            data[++topIndex] = value;
+        }
+
+        // Return top value, then remove them
+        T pop() {
+            return data[topIndex--];
+        }
+
         int getTopIndex() const {
             return topIndex;
         }
