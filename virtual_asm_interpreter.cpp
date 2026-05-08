@@ -2,12 +2,13 @@
 
 // ----- CUSTOM LIBRARY -----
 // Stack (Last In, First Out)
-template <typename T>
+template <typename T, int Size = 8>
 class Stack {
+    static_assert(Size > 0, "Stack size must be positive!");
+
     public:
-        Stack(int size = 8) : capacity(size) {
+        Stack() : capacity(Size), topIndex(-1) {
             data = new T[capacity];
-            topIndex = -1;
         }
 
         ~Stack() {
@@ -15,12 +16,18 @@ class Stack {
         }
 
         // Stores value into the stack
-        void push(T value) {
+        void push(const T& value) {
+            if (topIndex >= capacity - 1) {
+                throw OverflowException();
+            }
             data[++topIndex] = value;
         }
 
         // Return top value, then remove them
         T pop() {
+            if (isEmpty()) {
+                throw UnderflowException();
+            }
             return data[topIndex--];
         }
 
@@ -35,6 +42,10 @@ class Stack {
         bool isEmpty() const {
             return topIndex == -1;
         }
+
+        // Exception classes
+        class OverflowException {}; 
+        class UnderflowException {};
 
     private:
         T* data;        // Pointer to stack array
