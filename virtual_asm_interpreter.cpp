@@ -57,6 +57,24 @@ class Stack {
         Stack& operator=(const Stack& other) = delete;
 };
 
+// ----- MACHINE ARCHITECTURE -----
+// Register
+class Register {
+    public:
+        Register() : value(0) {}
+
+        signed char getValue() const { 
+            return value; 
+        }
+
+        void setValue(signed char newValue) { 
+            value = newValue; 
+        }
+
+    private:
+        signed char value;  // 1-byte signed value stored (-128 to 127)
+};
+
 // ----- MAIN -----
 int main() {
     return 0;
