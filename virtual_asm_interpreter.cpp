@@ -43,6 +43,31 @@ class Stack {
             return topIndex == -1;
         }
 
+        // Move Assignment Operator
+        Stack& operator=(Stack&& other) noexcept {
+            if (this != &other) {
+                delete[] data;
+
+                // Transfer data from other
+                data = other.data;
+                capacity = other.capacity;
+                topIndex = other.topIndex;
+
+                // Delete other data
+                other.data = nullptr;
+                other.capacity = 0;
+                other.topIndex = -1;
+            }
+            return *this;
+        }
+
+        // Move Constructor
+        Stack(Stack&& other) noexcept : data(other.data), capacity(other.capacity), topIndex(other.topIndex) {
+            other.data = nullptr;
+            other.capacity = 0;
+            other.topIndex = -1;
+        }
+   
         // Disable copying stack
         Stack(const Stack& other) = delete;
         Stack& operator=(const Stack& other) = delete;
