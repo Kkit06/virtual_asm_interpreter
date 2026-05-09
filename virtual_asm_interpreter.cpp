@@ -43,6 +43,10 @@ class Stack {
             return topIndex == -1;
         }
 
+        // Disable copying stack
+        Stack(const Stack& other) = delete;
+        Stack& operator=(const Stack& other) = delete;
+
         // Exception classes
         class OverflowException {}; 
         class UnderflowException {};
@@ -51,10 +55,6 @@ class Stack {
         T* data;        // Pointer to stack array
         int capacity;   // Maximum size of the stack array
         int topIndex;   // Index of the top element, -1 if empty
-
-        // Disable copying stack
-        Stack(const Stack& other) = delete;
-        Stack& operator=(const Stack& other) = delete;
 };
 
 // Vector
@@ -83,17 +83,51 @@ class Vector {
             return data[index];
         }
 
+        // Const for reading a vector
+        const T& operator[](int index) const {
+            if (index < 0 || index >= currentSize) {
+                throw IndexOutOfBoundsException();
+            }
+            return data[index];
+        }
+
+        // Move Assignment Operator
+        Vector& operator=(Vector&& other) noexcept {
+            if (this != &other) {
+                delete[] data;
+
+                // Transfer data from other
+                data = other.data;
+                currentSize = other.currentSize;
+                capacity = other.capacity;
+
+                // Delete other data
+                other.data = nullptr;
+                other.currentSize = 0;
+                other.capacity = 0;
+            }
+            return *this;
+        }
+
+        // Move Constructor
+        Vector(Vector&& other) noexcept : data(other.data), currentSize(other.currentSize), capacity(other.capacity) {
+            other.data = nullptr;
+            other.currentSize = 0;
+            other.capacity = 0;
+        }
+
         // Returns current number of elements
         int size() const {
             return currentSize;
         }
 
-        // Disable copying stack
+        // Disable copying vector
         Vector(const Vector& other) = delete;
         Vector& operator=(const Vector& other) = delete;
 
         // Exception classes
         class IndexOutOfBoundsException {};
+        class AllocationFailedException {};
 
     private:
         T* data;           // Pointer to the dynamic array
@@ -109,8 +143,13 @@ class Vector {
             }
 
             T* newData = new T[capacity];
-            for (int i = 0; i < currentSize; i++) {
-                newData[i] = data[i];
+            try {
+                for (int i = 0; i < currentSize; i++) {
+                    newData[i] = data[i];
+                }
+            } catch (...) {
+                delete[] newData;
+                throw AllocationFailedException();
             }
 
             delete[] data;
