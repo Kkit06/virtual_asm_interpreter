@@ -60,12 +60,48 @@ class Stack {
 // Vector
 template <typename T>
 class Vector {
+    public:
+        Vector() : data(nullptr), currentSize(0), capacity(0) {}
+
+        ~Vector() {
+            delete[] data;
+        }
+
+        // Add an element, if full, call resize
+        void push_back(const T& value) {
+            if (currentSize == capacity) {
+                resize();
+            }
+            data[currentSize++] = value;
+        }
+
+        // Overload operator [], when trying to access an invalid/out of bounds index, throws error
+        T& operator[](int index) {
+            if (index < 0 || index >= currentSize) {
+                throw IndexOutOfBoundsException();
+            }
+            return data[index];
+        }
+
+        // Returns current number of elements
+        int size() const {
+            return currentSize;
+        }
+
+        // Disable copying stack
+        Vector(const Vector& other) = delete;
+        Vector& operator=(const Vector& other) = delete;
+
+        // Exception classes
+        class IndexOutOfBoundsException {};
+
     private:
         T* data;           // Pointer to the dynamic array
-        int currentSize;   // Number of elements currently stored
-        int capacity;      // Total capacity of the current array
-        
-        void resize() { // Double the size when size is full
+        int currentSize;   // Number of elements currently in the vector
+        int capacity;      // Total space currently allocated
+
+        // Called when array is full to double the size
+        void resize() {
             if (capacity == 0) {
                 capacity = 1;
             } else {
@@ -79,13 +115,6 @@ class Vector {
 
             delete[] data;
             data = newData;
-        }
-
-    public:
-        Vector() : data(nullptr), currentSize(0), capacity(0) {}
-
-        ~Vector() {
-            delete[] data;
         }
 };
 
