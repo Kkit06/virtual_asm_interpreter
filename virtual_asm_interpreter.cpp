@@ -57,6 +57,38 @@ class Stack {
         Stack& operator=(const Stack& other) = delete;
 };
 
+// Vector
+template <typename T>
+class Vector {
+    private:
+        T* data;           // Pointer to the dynamic array
+        int currentSize;   // Number of elements currently stored
+        int capacity;      // Total capacity of the current array
+        
+        void resize() { // Double the size when size is full
+            if (capacity == 0) {
+                capacity = 1;
+            } else {
+                capacity = capacity * 2;
+            }
+
+            T* newData = new T[capacity];
+            for (int i = 0; i < currentSize; i++) {
+                newData[i] = data[i];
+            }
+
+            delete[] data;
+            data = newData;
+        }
+
+    public:
+        Vector() : data(nullptr), currentSize(0), capacity(0) {}
+
+        ~Vector() {
+            delete[] data;
+        }
+};
+
 // ----- MAIN -----
 int main() {
     return 0;
