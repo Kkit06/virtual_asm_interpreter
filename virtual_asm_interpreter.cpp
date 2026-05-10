@@ -17,17 +17,13 @@ class Stack {
 
         // Stores value into the stack
         void push(const T& value) {
-            if (topIndex >= capacity - 1) {
-                throw OverflowException();
-            }
+            if (topIndex >= capacity - 1) throw OverflowException();
             data[++topIndex] = value;
         }
 
         // Return top value, then remove them
         T pop() {
-            if (isEmpty()) {
-                throw UnderflowException();
-            }
+            if (isEmpty()) throw UnderflowException();
             return data[topIndex--];
         }
 
@@ -94,29 +90,21 @@ class Vector {
 
         // Add an element, if full, call resize
         void push_back(const T& value) {
-            if (currentSize == capacity) {
-                resize();
-            }
+            if (currentSize == capacity) resize();
             data[currentSize++] = value;
         }
 
         // Remove last element, data will not be deleted but replaced in the future
         void pop_back() {
-            if (isEmpty()) {
-                throw IndexOutOfBoundsException();
-            }
+            if (isEmpty()) throw IndexOutOfBoundsException();
             currentSize--;
         }
 
         // Insert a value into a certain position
         void insert(int index, const T& value) {
-            if (index < 0 || index > currentSize) {
-                throw IndexOutOfBoundsException();
-            }
+            if (index < 0 || index > currentSize) throw IndexOutOfBoundsException();
 
-            if (currentSize == capacity) {
-                resize();
-            }
+            if (currentSize == capacity) resize();
 
             // Shift elements to the right to make a hole
             for (int i = currentSize; i > index; i--) {
@@ -129,9 +117,7 @@ class Vector {
 
         // Remove the value at index and shift right position to left
         void remove(int index) {
-            if (index < 0 || index >= currentSize) {
-                throw IndexOutOfBoundsException();
-            }
+            if (index < 0 || index >= currentSize) throw IndexOutOfBoundsException();
 
             // Shift elements to the left to fill the gap
             for (int i = index; i < currentSize - 1; i++) {
@@ -143,25 +129,19 @@ class Vector {
 
         // Replace value at index with new value
         void replace(int index, const T& value) {
-            if (index < 0 || index >= currentSize) {
-                throw IndexOutOfBoundsException();
-            }
+            if (index < 0 || index >= currentSize) throw IndexOutOfBoundsException();
             data[index] = value;
         }
 
         // Overload operator [], when trying to access an invalid/out of bounds index, throws error
         T& operator[](int index) {
-            if (index < 0 || index >= currentSize) {
-                throw IndexOutOfBoundsException();
-            }
+            if (index < 0 || index >= currentSize) throw IndexOutOfBoundsException();
             return data[index];
         }
 
         // Const for reading a vector
         const T& operator[](int index) const {
-            if (index < 0 || index >= currentSize) {
-                throw IndexOutOfBoundsException();
-            }
+            if (index < 0 || index >= currentSize) throw IndexOutOfBoundsException();
             return data[index];
         }
 
@@ -215,11 +195,7 @@ class Vector {
 
         // Called when array is full to double the size
         void resize() {
-            if (capacity == 0) {
-                capacity = 1;
-            } else {
-                capacity = capacity * 2;
-            }
+            capacity = (capacity == 0) ? 1 : capacity * 2;
 
             T* newData = new T[capacity];
             try {
