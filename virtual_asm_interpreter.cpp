@@ -100,6 +100,55 @@ class Vector {
             data[currentSize++] = value;
         }
 
+        // Remove last element, data will not be deleted but replaced in the future
+        void pop_back() {
+            if (isEmpty()) {
+                throw IndexOutOfBoundsException();
+            }
+            currentSize--;
+        }
+
+        // Insert a value into a certain position
+        void insert(int index, const T& value) {
+            if (index < 0 || index > currentSize) {
+                throw IndexOutOfBoundsException();
+            }
+
+            if (currentSize == capacity) {
+                resize();
+            }
+
+            // Shift elements to the right to make a hole
+            for (int i = currentSize; i > index; i--) {
+                data[i] = data[i - 1];
+            }
+
+            data[index] = value;
+            currentSize++;
+        }
+
+        // Remove the value at index and shift right position to left
+        void remove(int index) {
+            if (index < 0 || index >= currentSize) {
+                throw IndexOutOfBoundsException();
+            }
+
+            // Shift elements to the left to fill the gap
+            for (int i = index; i < currentSize - 1; i++) {
+                data[i] = data[i + 1];
+            }
+
+            currentSize--;
+        }
+
+        // Replace value at index with new value
+        void replace(int index, const T& value) {
+            if (index < 0 || index >= currentSize) {
+                throw IndexOutOfBoundsException();
+            }
+            data[index] = value;
+        }
+
         // Overload operator [], when trying to access an invalid/out of bounds index, throws error
         T& operator[](int index) {
             if (index < 0 || index >= currentSize) {
@@ -144,6 +193,11 @@ class Vector {
         // Returns current number of elements
         int size() const {
             return currentSize;
+        }
+
+        // True if vector is empty
+        bool isEmpty() const {
+            return currentSize == 0;
         }
 
         // Disable copying vector
