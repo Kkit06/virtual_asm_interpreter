@@ -212,6 +212,83 @@ class Vector {
         }
 };
 
+// Queue (First In, First Out)
+template <typename T>
+class Queue {
+    public:
+        Queue(int initialCapacity = 4) : head(0), tail(0), count(0), capacity(initialCapacity) {
+            for(int i = 0; i < capacity; i++) {
+                data.push_back(T()); 
+            }
+        }
+
+        // Add data into queue
+        void enqueue(const T& value) {
+            if (isFull()) resize();
+
+            data.replace(tail, value);
+            tail = (tail + 1) % capacity; // Wrap around if reach end
+            count++;
+        }
+
+        // Remove data into queue
+        T dequeue() {
+            if (isEmpty()) throw typename Vector<T>::IndexOutOfBoundsException();
+
+            T value = data[head];
+            head = (head + 1) % capacity; // Wrap around if reach end
+            count--;
+            return value;
+        }
+
+        int getSize() const {
+            return count;
+        }
+
+        int getCapacity() const {
+            return capacity;
+        }
+
+        bool isFull() const {
+            return count == capacity;
+        }
+
+        bool isEmpty() const {
+            return count == 0;
+        }
+
+        // Disable copying queue
+        Queue(const Queue& other) = delete;
+        Queue& operator=(const Queue& other) = delete;
+
+    private:
+        Vector<T> data;     // Vector to store the queue
+        int head;           // Index of the front element
+        int tail;           // Index where the next element will be inserted
+        int count;          // Current number of elements
+        int capacity;       // Total space currently allocated
+
+        void resize() {
+            int newCapacity = capacity * 2;
+            Vector<T> newData;
+
+            // Populate new queue with elements in correct linear order
+            for (int i = 0; i < count; i++) {
+                newData.push_back(data[(head + i) % capacity]);
+            }
+
+            // Add empty padding for the remaining new capacity
+            for (int i = count; i < newCapacity; i++) {
+                newData.push_back(T());
+            }
+
+            data = static_cast<Vector<T>&&>(newData);
+            capacity = newCapacity;
+            head = 0;
+            tail = count;
+        }
+};
+
 // ----- MAIN -----
 int main() {
     return 0;
