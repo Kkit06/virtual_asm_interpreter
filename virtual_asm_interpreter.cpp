@@ -17,7 +17,7 @@ class Stack {
 
         // Stores value into the stack
         void push(const T& value) {
-            if (topIndex >= capacity - 1) throw OverflowException();
+            if (topIndex >= static_cast<int>(capacity) - 1) throw OverflowException();
             data[++topIndex] = value;
         }
 
@@ -73,16 +73,29 @@ class Stack {
         class UnderflowException {};
 
     private:
-        T* data;        // Pointer to stack array
-        int capacity;   // Maximum size of the stack array
-        int topIndex;   // Index of the top element, -1 if empty
+        T* data;            // Pointer to stack array
+        size_t capacity;    // Maximum size of the stack array
+        int topIndex;       // Index of the top element, -1 if empty
 };
 
 // Vector
 template <typename T>
 class Vector {
     public:
-        Vector() : data(nullptr), currentSize(0), capacity(0) {}
+        Vector(int initialCapacity = 4) : currentSize(0), capacity(initialCapacity) {
+            if (capacity < 1) throw NegativeSizeException();
+            data = new T[capacity];
+        }
+
+        // Constructor for pre-filling the vector
+        Vector(int size, const T& defaultValue) : currentSize(size), capacity(size) {
+            if (size < 0) throw NegativeSizeException();
+            data = new T[capacity];
+            
+            for (size_t i = 0; i < currentSize; i++) {
+                data[i] = defaultValue;
+            }
+        }
 
         ~Vector() {
             delete[] data;
@@ -103,11 +116,10 @@ class Vector {
         // Insert a value into a certain position
         void insert(int index, const T& value) {
             if (index < 0 || index > currentSize) throw IndexOutOfBoundsException();
-
             if (currentSize == capacity) resize();
 
             // Shift elements to the right to make a hole
-            for (int i = currentSize; i > index; i--) {
+            for (size_t i = currentSize; i > index; i--) {
                 data[i] = data[i - 1];
             }
 
@@ -117,10 +129,10 @@ class Vector {
 
         // Remove the value at index and shift right position to left
         void remove(int index) {
-            if (index < 0 || index >= currentSize) throw IndexOutOfBoundsException();
+            if (index < 0 || index >= currentSize || currentSize == 0) throw IndexOutOfBoundsException();
 
             // Shift elements to the left to fill the gap
-            for (int i = index; i < currentSize - 1; i++) {
+            for (size_t i = index; i < currentSize - 1; i++) {
                 data[i] = data[i + 1];
             }
 
@@ -186,29 +198,109 @@ class Vector {
 
         // Exception classes
         class IndexOutOfBoundsException {};
-        class AllocationFailedException {};
+        class NegativeSizeException {};
+        class OverflowException {};
 
     private:
-        T* data;           // Pointer to the dynamic array
-        int currentSize;   // Number of elements currently in the vector
-        int capacity;      // Total space currently allocated
+        T* data;                // Pointer to the dynamic array
+        size_t currentSize;     // Number of elements currently in the vector
+        size_t capacity;        // Total space currently allocated
+
+        // Reset null vector to default 
+        void reinitialize() {
+            capacity = 4;
+            currentSize = 0;
+            data = new T[capacity];
+        }
 
         // Called when array is full to double the size
         void resize() {
-            capacity = (capacity == 0) ? 1 : capacity * 2;
+            if (capacity > 1073741823) throw OverflowException();
 
-            T* newData = new T[capacity];
-            try {
-                for (int i = 0; i < currentSize; i++) {
-                    newData[i] = data[i];
-                }
-            } catch (...) {
-                delete[] newData;
-                throw AllocationFailedException();
+            size_t newCapacity = (capacity == 0) ? 1 : capacity * 2;
+            T* newData = new T[newCapacity];
+            
+            for (size_t i = 0; i < currentSize; i++) {
+                newData[i] = data[i];
             }
 
             delete[] data;
             data = newData;
+            capacity = newCapacity;
+        }
+};
+
+// Queue (First In, First Out)
+template <typename T>
+class Queue {
+    public:
+        Queue(int initialCapacity = 4) : data(initialCapacity, T()), head(0), tail(0), count(0), capacity(initialCapacity) {}
+        
+        // Add data into queue
+        void enqueue(const T& value) {
+            if (isFull()) resize();
+
+            data.replace(tail, value);
+            tail = (tail + 1) % capacity; // Wrap around if reach end
+            count++;
+        }
+
+        // Remove data into queue
+        T dequeue() {
+            if (isEmpty()) throw EmptyQueueException();
+
+            T value = data[head];
+            head = (head + 1) % capacity; // Wrap around if reach end
+            count--;
+            return value;
+        }
+
+        int getSize() const {
+            return count;
+        }
+
+        int getCapacity() const {
+            return capacity;
+        }
+
+        bool isFull() const {
+            return count == capacity;
+        }
+
+        bool isEmpty() const {
+            return count == 0;
+        }
+
+        // Disable copying queue
+        Queue(const Queue& other) = delete;
+        Queue& operator=(const Queue& other) = delete;
+
+        // Exception classes
+        class EmptyQueueException {};
+        class OverflowException {};
+
+    private:
+        Vector<T> data;     // Vector to store the queue
+        int head;           // Index of the front element
+        int tail;           // Index where the next element will be inserted
+        int count;          // Current number of elements
+        int capacity;       // Total space currently allocated
+
+        void resize() {
+            if (capacity > 1073741823) throw OverflowException();
+
+            int newCapacity = capacity * 2;
+            Vector<T> newData(newCapacity, T());
+
+            // Manually transfer elements in linear order
+            for (size_t i = 0; i < count; i++) {
+                newData.replace(i, data[(head + i) % capacity]);
+            }
+
+            data = static_cast<Vector<T>&&>(newData);
+            capacity = newCapacity;
+            head = 0;
+            tail = count;
         }
 };
 
