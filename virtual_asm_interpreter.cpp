@@ -82,7 +82,10 @@ class Stack {
 template <typename T>
 class Vector {
     public:
-        Vector() : data(nullptr), currentSize(0), capacity(0) {}
+        Vector(int initialCapacity = 4) : currentSize(0), capacity(initialCapacity) {
+            if (capacity < 1) throw NegativeSizeException();
+            data = new T[capacity];
+        }
 
         ~Vector() {
             delete[] data;
@@ -90,6 +93,7 @@ class Vector {
 
         // Add an element, if full, call resize
         void push_back(const T& value) {
+            if (!data) reinitialize();
             if (currentSize == capacity) resize();
             data[currentSize++] = value;
         }
@@ -104,6 +108,7 @@ class Vector {
         void insert(int index, const T& value) {
             if (index < 0 || index > currentSize) throw IndexOutOfBoundsException();
 
+            if (!data) reinitialize();
             if (currentSize == capacity) resize();
 
             // Shift elements to the right to make a hole
@@ -186,29 +191,32 @@ class Vector {
 
         // Exception classes
         class IndexOutOfBoundsException {};
-        class AllocationFailedException {};
+        class NegativeSizeException {};
 
     private:
         T* data;           // Pointer to the dynamic array
         int currentSize;   // Number of elements currently in the vector
         int capacity;      // Total space currently allocated
 
+        // Reset null vector to default 
+        void reinitialize() {
+            capacity = 4;
+            currentSize = 0;
+            data = new T[capacity];
+        }
+
         // Called when array is full to double the size
         void resize() {
-            capacity = (capacity == 0) ? 1 : capacity * 2;
-
-            T* newData = new T[capacity];
-            try {
-                for (int i = 0; i < currentSize; i++) {
-                    newData[i] = data[i];
-                }
-            } catch (...) {
-                delete[] newData;
-                throw AllocationFailedException();
+            int newCapacity = (capacity == 0) ? 1 : capacity * 2;
+            T* newData = new T[newCapacity];
+            
+            for (int i = 0; i < currentSize; i++) {
+                newData[i] = data[i];
             }
 
             delete[] data;
             data = newData;
+            capacity = newCapacity;
         }
 };
 
@@ -216,17 +224,18 @@ class Vector {
 template <typename T>
 class Queue {
     public:
-        Queue(int initialCapacity = 4) : head(0), tail(0), count(0), capacity(initialCapacity) {
-            for(int i = 0; i < capacity; i++) {
-                data.push_back(T()); 
-            }
-        }
+        Queue(int initialCapacity = 4) : data(initialCapacity), head(0), tail(0), count(0), capacity(initialCapacity) {}
 
         // Add data into queue
         void enqueue(const T& value) {
             if (isFull()) resize();
 
-            data.replace(tail, value);
+            if (data.size() < capacity) {
+                data.push_back(value);
+            } else {
+                data.replace(tail, value);
+            }
+
             tail = (tail + 1) % capacity; // Wrap around if reach end
             count++;
         }
@@ -270,16 +279,11 @@ class Queue {
 
         void resize() {
             int newCapacity = capacity * 2;
-            Vector<T> newData;
+            Vector<T> newData(newCapacity);
 
-            // Populate new queue with elements in correct linear order
+            // Manually transfer elements in linear order
             for (int i = 0; i < count; i++) {
                 newData.push_back(data[(head + i) % capacity]);
-            }
-
-            // Add empty padding for the remaining new capacity
-            for (int i = count; i < newCapacity; i++) {
-                newData.push_back(T());
             }
 
             data = static_cast<Vector<T>&&>(newData);
