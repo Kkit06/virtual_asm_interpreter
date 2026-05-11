@@ -73,9 +73,9 @@ class Stack {
         class UnderflowException {};
 
     private:
-        T* data;        // Pointer to stack array
-        int capacity;   // Maximum size of the stack array
-        int topIndex;   // Index of the top element, -1 if empty
+        T* data;            // Pointer to stack array
+        size_t capacity;    // Maximum size of the stack array
+        int topIndex;       // Index of the top element, -1 if empty
 };
 
 // Vector
@@ -112,7 +112,7 @@ class Vector {
             if (currentSize == capacity) resize();
 
             // Shift elements to the right to make a hole
-            for (int i = currentSize; i > index; i--) {
+            for (size_t i = currentSize; i > index; i--) {
                 data[i] = data[i - 1];
             }
 
@@ -125,7 +125,7 @@ class Vector {
             if (index < 0 || index >= currentSize) throw IndexOutOfBoundsException();
 
             // Shift elements to the left to fill the gap
-            for (int i = index; i < currentSize - 1; i++) {
+            for (size_t i = index; i < currentSize - 1; i++) {
                 data[i] = data[i + 1];
             }
 
@@ -194,9 +194,9 @@ class Vector {
         class NegativeSizeException {};
 
     private:
-        T* data;           // Pointer to the dynamic array
-        int currentSize;   // Number of elements currently in the vector
-        int capacity;      // Total space currently allocated
+        T* data;                // Pointer to the dynamic array
+        size_t currentSize;     // Number of elements currently in the vector
+        size_t capacity;        // Total space currently allocated
 
         // Reset null vector to default 
         void reinitialize() {
@@ -207,10 +207,10 @@ class Vector {
 
         // Called when array is full to double the size
         void resize() {
-            int newCapacity = (capacity == 0) ? 1 : capacity * 2;
+            size_t newCapacity = (capacity == 0) ? 1 : capacity * 2;
             T* newData = new T[newCapacity];
             
-            for (int i = 0; i < currentSize; i++) {
+            for (size_t i = 0; i < currentSize; i++) {
                 newData[i] = data[i];
             }
 
@@ -282,7 +282,7 @@ class Queue {
             Vector<T> newData(newCapacity);
 
             // Manually transfer elements in linear order
-            for (int i = 0; i < count; i++) {
+            for (size_t i = 0; i < count; i++) {
                 newData.push_back(data[(head + i) % capacity]);
             }
 
