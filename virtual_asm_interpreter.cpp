@@ -318,6 +318,11 @@ class Register {
             value = newValue; 
         }
 
+        // Used to update ZF
+        bool isZero() const { 
+            return value == 0;
+        }
+
     private:
         signed char value;  // 1-byte signed value stored (-128 to 127)
 };
