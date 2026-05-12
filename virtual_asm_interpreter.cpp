@@ -327,6 +327,19 @@ class Register {
         signed char value;  // 1-byte signed value stored (-128 to 127)
 };
 
+// R0-R7 registers 
+class GeneralRegister : public Register {
+    public:
+        GeneralRegister(int id) : Register(), registerID(id) {}
+
+        int getID() const { 
+            return registerID; 
+        }
+
+    private:
+        int registerID;     // ID of the general register
+};
+
 // ----- MAIN -----
 int main() {
     return 0;
