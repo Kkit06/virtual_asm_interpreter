@@ -340,6 +340,17 @@ class GeneralRegister : public Register {
         int registerID;     // ID of the general register
 };
 
+// ----- INSTRUCTIONS -----
+// Base Instruction Class
+class Instruction {
+    public:
+        // Will be implemented by all children instructions
+        virtual void execute() = 0; // Pending implementation of CPU class 
+
+        // Clean up all children instructions
+        virtual ~Instruction() {}
+};
+
 // ----- MAIN -----
 int main() {
     return 0;
