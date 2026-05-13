@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 
 // ----- CUSTOM LIBRARY -----
 // Stack (Last In, First Out)
@@ -403,6 +404,15 @@ class Memory {
 
         // Exception classes
         class IndexOutOfBoundsException {};
+};
+
+// ----- INTERPRETER -----
+class Runner {
+    private:
+        const std::string commands[2] = { "INPUT", "OUTPUT" };  // Instruction keywords
+
+    public:
+    
 };
 
 // ----- INSTRUCTIONS -----
