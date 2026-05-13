@@ -331,7 +331,7 @@ class Register {
             return value == 0;
         }
 
-    private:
+    protected:
         signed char value;  // 1-byte signed value stored (-128 to 127)
 };
 
@@ -377,6 +377,34 @@ class FlagRegister {
         }
 };
 
+// Memory array
+class Memory {
+    private:
+        signed char data[64];   // The array of 64 byte memory
+
+    public:
+        Memory() { // limited to 64 byte from 0 to 63
+            for (int i = 0; i < 64; ++i) {
+                data[i] = 0;
+            }
+        }
+
+        // To detect whether array index is over or not
+        signed char getByte(int address) const {
+            if (address < 0 || address >= 64) throw IndexOutOfBoundsException();
+            return data[address];
+        }
+
+        // Sets data at address when it is valid
+        void setByte(int address, signed char value) {
+            if (address < 0 || address >= 64) throw IndexOutOfBoundsException();
+            data[address] = value;
+        }
+
+        // Exception classes
+        class IndexOutOfBoundsException {};
+};
+
 // ----- INSTRUCTIONS -----
 // Base Instruction Class
 class Instruction {
@@ -386,34 +414,6 @@ class Instruction {
 
         // Clean up all children instructions
         virtual ~Instruction() {}
-};
-
-class Memory {
-private:
-    signed char data[64]; // the form of memory
-
-public:
-
-    Memory() { // limited to 64 byte from 0 to 63
-        for (int i = 0; i < 64; ++i) {
-            data[i] = 0;
-        }
-    }
-
-    // To detect whether array index is over or not
-    signed char getByte(int address) const {
-        if (address < 0 || address >= 64) {
-            return 0; 
-        }
-        return data[address];
-    }
-
-    // Sets data at address when it is valid
-    void setByte(int address, signed char value) {
-        if (address >= 0 && address < 64) {
-            data[address] = value;
-        }
-    }
 };
 
 // ----- MAIN -----
