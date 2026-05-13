@@ -408,11 +408,50 @@ class Memory {
 
 // ----- INTERPRETER -----
 class Runner {
-    private:
-        const std::string commands[2] = { "INPUT", "OUTPUT" };  // Instruction keywords
-
     public:
-    
+        void run() {
+            std::string input;
+
+            while (true) {
+                std::cout << "> ";
+                if (!std::getline(std::cin, input) || input == "exit") break; // Exit immediately
+
+                if (input.find("run ") == 0) {
+                    std::string filename = input.substr(4);
+                    loadAndRunFile(filename);
+                } else {
+                    executeCommand(input);
+                }
+                //cpu.displayDump();
+            }
+        }
+
+        void loadAndRunFile(const std::string& filename) {
+            // Reset cpu to 0 state
+            // Reads file into vector, ignores empty lines
+            // Updates PC from 0 to total instructions 
+            // Calls executeCommand() in a loop
+        }
+
+    private:
+        Vector<Instruction*> instructionList;  // List of all instruction
+
+        Instruction* decode(const std::string& line) {
+            // Logic to parse "MOV R1, 5" or "ADD R3, R1"
+            // Returns a pointer to a new Instruction subclass
+            // Example: if (line == "MOV") return new MOVInstruction(...);
+
+            return nullptr; // No command found
+        }
+
+        void executeCommand(const std::string& cmd) {
+            Instruction* instr = decode(cmd);
+
+            if (instr) {
+                instr->execute();
+                delete instr;
+            }
+        }
 };
 
 // ----- INSTRUCTIONS -----
