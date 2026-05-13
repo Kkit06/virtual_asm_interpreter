@@ -359,6 +359,34 @@ class Instruction {
         virtual ~Instruction() {}
 };
 
+class Memory {
+private:
+    signed char data[64]; // the form of memory
+
+public:
+
+    Memory() { // limited to 64 byte from 0 to 63
+        for (int i = 0; i < 64; ++i) {
+            data[i] = 0;
+        }
+    }
+
+    // To detect whether array index is over or not
+    signed char getByte(int address) const {
+        if (address < 0 || address >= 64) {
+            return 0; 
+        }
+        return data[address];
+    }
+
+    // Sets data at address when it is valid
+    void setByte(int address, signed char value) {
+        if (address >= 0 && address < 64) {
+            data[address] = value;
+        }
+    }
+};
+
 // ----- MAIN -----
 int main() {
     return 0;
