@@ -350,6 +350,23 @@ class FlagRegister {
 
     public:
         FlagRegister() : OF(false), UF(false), CF(false), ZF(false) {}
+
+        // Set value functions
+        void setOF(bool val) { OF = val; }
+        void setUF(bool val) { UF = val; }
+        void setCF(bool val) { CF = val; }
+        void setZF(bool val) { ZF = val; }
+
+        // Get value functions
+        bool getOF() const { return OF; }
+        bool getUF() const { return UF; }
+        bool getCF() const { return CF; }
+        bool getZF() const { return ZF; }
+
+        // For RESET instruction to reset all flags
+        void resetFlags() {
+            OF = UF = CF = ZF = false;
+        }
 };
 
 // ----- INSTRUCTIONS -----
