@@ -340,6 +340,18 @@ class GeneralRegister : public Register {
         int registerID;     // ID of the general register
 };
 
+// Flag Register
+class FlagRegister {
+    private:
+        bool OF; // Overflow flag
+        bool UF; // Underflow flag
+        bool CF; // Carry flag
+        bool ZF; // Zero flag
+
+    public:
+        FlagRegister() : OF(false), UF(false), CF(false), ZF(false) {}
+};
+
 // ----- INSTRUCTIONS -----
 // Base Instruction Class
 class Instruction {
