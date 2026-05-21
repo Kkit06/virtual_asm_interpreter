@@ -416,6 +416,37 @@ class Instruction {
         virtual ~Instruction() {}
 };
 
+// ----- CPU -----
+class CPU {
+    private:  // it contains 8 general registers, flag register, memory, stack, program counter, and stack index as private members.
+        GeneralRegister* registers[8];
+        FlagRegister flags;            
+        Memory memory;                 
+        Stack<signed char, 8> stack;   
+        int PC;                        
+        int stackIndex;                
+    public:
+        CPU() : PC(0), stackIndex(-1) {
+            for (int i = 0; i < 8; ++i) registers[i] = new GeneralRegister(i);
+        }// Clean up all registers
+        ~CPU() { for (int i = 0; i < 8; ++i) delete registers[i]; }
+        
+        GeneralRegister& getRegister(int id) { return *registers[id]; }
+        FlagRegister& getFlags() { return flags; }
+        Memory& getMemory() { return memory; }
+        Stack<signed char, 8>& getStack() { return stack; }
+        int getPC() const { return PC; }// Returns the current value of the Program Counter integer.
+        void setPC(int newPC) { PC = newPC; }//Directly overwrites the Program Counter integer with a completely new value.
+
+        void run(Vector<Instruction*>& program) {//
+            while (PC >= 0 && PC < program.size()) {
+                PC++; 
+                program[PC - 1]->execute(); 
+                stackIndex = stack.getTopIndex(); 
+            }
+        }
+};
+
 // ----- MAIN -----
 int main() {
     return 0;
