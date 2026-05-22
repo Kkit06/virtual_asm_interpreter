@@ -411,7 +411,7 @@ class Memory {
 // CPU
 class CPU {
     private:
-        GeneralRegister* registers[8];      // 8 general registers, in a array
+        GeneralRegister registers[8];       // 8 general registers, in a array
         FlagRegister* flags;                // Flag register
         Memory memory;                      // 64 byte of memory
         Stack<signed char, 8> stack;        // 8 byte of stack
@@ -419,15 +419,12 @@ class CPU {
         signed char SI;                     // Stack index
          
     public:
-        CPU(FlagRegister* externalFlags) : flags(externalFlags), PC(0), SI(0)  {
-            for (int i = 0; i < 8; ++i) registers[i] = new GeneralRegister(i);
-        }
+        CPU(FlagRegister* externalFlags) : flags(externalFlags), PC(0), SI(0),
+            registers{GeneralRegister(0), GeneralRegister(1), GeneralRegister(2), GeneralRegister(3),
+                      GeneralRegister(4), GeneralRegister(5), GeneralRegister(6), GeneralRegister(7)} {}
 
-        // Clean up all registers
-        ~CPU() { for (int i = 0; i < 8; ++i) delete registers[i]; }
-        
         // Get reference to the specific general register.
-        GeneralRegister& getRegister(int id) { return *registers[id]; }
+        GeneralRegister& getRegister(int id) { return registers[id]; }
 
         // Get reference to the CPU's status flags.
         FlagRegister& getFlags() { return *flags; }
@@ -451,32 +448,53 @@ class CPU {
 // ----- INTERPRETER -----
 class Runner {
     public:
+        Runner(CPU& externalCpu) : cpu(externalCpu) {}
+
         void run() {
             std::string input;
 
             while (true) {
                 std::cout << "> ";
-                if (!std::getline(std::cin, input) || input == "exit") break; // Exit immediately
+                if (!std::getline(std::cin, input) || input == "exit") break;
 
-                if (input.find("run ") == 0) {
-                    std::string filename = input.substr(4);
-                    loadAndRunFile(filename);
-                } else {
+                if (input.find("run ") == 0)
+                    loadAndRunFile(input.substr(4));
+                else
                     executeCommand(input);
-                }
+
                 //cpu.displayDump();
             }
         }
 
+        // Convert single command into a single element vector
+        void executeCommand(const std::string& cmd) {
+            if (cmd.empty()) return;
+
+            Instruction* instr = decode(cmd);
+            if (instr) {
+                Vector<Instruction*> program;
+                program.push_back(instr);
+                
+                cpu.run(program);   // Delegate to CPU execution unit
+                
+                delete instr;       // Free allocation
+            } else {
+                std::cerr << "Syntax Error / Unknown instruction." << std::endl;
+            }
+        }
+
+        // Read entire file into a vecotr of instruction
         void loadAndRunFile(const std::string& filename) {
             // Reset cpu to 0 state
             // Reads file into vector, ignores empty lines
             // Updates PC from 0 to total instructions 
             // Calls executeCommand() in a loop
+            
+            std::cout << "Sorry bang, not implemented yet\n";
         }
 
     private:
-        Vector<Instruction*> instructionList;  // List of all instruction
+        CPU& cpu;                              // Refrence to CPU in the program
 
         Instruction* decode(const std::string& line) {
             // Logic to parse "MOV R1, 5" or "ADD R3, R1"
@@ -484,15 +502,6 @@ class Runner {
             // Example: if (line == "MOV") return new MOVInstruction(...);
 
             return nullptr; // No command found
-        }
-
-        void executeCommand(const std::string& cmd) {
-            Instruction* instr = decode(cmd);
-
-            if (instr) {
-                instr->execute();
-                delete instr;
-            }
         }
 };
 
