@@ -383,14 +383,10 @@ class FlagRegister {
 // Memory array
 class Memory {
     private:
-        signed char data[64];   // The array of 64 byte memory
+        Vector<signed char> data;   // The array of 64 byte memory
 
     public:
-        Memory() { // limited to 64 byte from 0 to 63
-            for (int i = 0; i < 64; ++i) {
-                data[i] = 0;
-            }
-        }
+        Memory() : data(64, 0) {} // Create data vector with 64 zeros
 
         // To detect whether array index is over or not
         signed char getByte(int address) const {
@@ -401,7 +397,7 @@ class Memory {
         // Sets data at address when it is valid
         void setByte(int address, signed char value) {
             if (address < 0 || address >= 64) throw IndexOutOfBoundsException();
-            data[address] = value;
+            data.replace(address, value);
         }
 
         // Exception classes
