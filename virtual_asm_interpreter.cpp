@@ -305,6 +305,9 @@ class Queue {
 };
 
 // ----- MACHINE ARCHITECTURE -----
+// Forward declaration
+class Instruction;
+
 // Register
 class Register {
     public:
@@ -407,34 +410,43 @@ class Memory {
 
 // CPU
 class CPU {
-    private:  // it contains 8 general registers, flag register, memory, stack, program counter, and stack index as private members.
-        GeneralRegister* registers[8];
-        FlagRegister flags;            
-        Memory memory;                 
-        Stack<signed char, 8> stack;   
-        int PC;                        
-        int stackIndex;       
+    private:
+        GeneralRegister* registers[8];      // 8 general registers, in a array
+        FlagRegister flags;                 // Flag register
+        Memory memory;                      // 64 byte of memory
+        Stack<signed char, 8> stack;        // 8 byte of stack
+        int PC;                             // Program counter
+        int stackIndex;                     // Stack index
          
     public:
-        CPU() : PC(0), stackIndex(-1) {
+        CPU() : PC(0), stackIndex(0)  {
             for (int i = 0; i < 8; ++i) registers[i] = new GeneralRegister(i);
-        }// Clean up all registers
+        }
+
+        // Clean up all registers
         ~CPU() { for (int i = 0; i < 8; ++i) delete registers[i]; }
         
+        // Get reference to the specific general register.
         GeneralRegister& getRegister(int id) { return *registers[id]; }
-        FlagRegister& getFlags() { return flags; }
-        Memory& getMemory() { return memory; }
-        Stack<signed char, 8>& getStack() { return stack; }
-        int getPC() const { return PC; }// Returns the current value of the Program Counter integer.
-        void setPC(int newPC) { PC = newPC; }//Directly overwrites the Program Counter integer with a completely new value.
 
-        void run(Vector<Instruction*>& program) {//
-            while (PC >= 0 && PC < program.size()) {
-                PC++; 
-                program[PC - 1]->execute(); 
-                stackIndex = stack.getTopIndex(); 
-            }
-        }
+        // Get reference to the CPU's status flags.
+        FlagRegister& getFlags() { return flags; }
+
+        // Get reference to the main memory.
+        Memory& getMemory() { return memory; }
+
+        // Get reference to the cpu stack.
+        Stack<signed char, 8>& getStack() { return stack; }
+
+        // Get and set the value of the Program Counter.
+        int getPC() const { return PC; }
+        void setPC(int newPC) { PC = newPC; }
+
+        // Get and set the value of the stackIndexr.
+        int getStackIndex() const { return stackIndex; }
+        void setStackIndex(int newStackIndex) { stackIndex = newStackIndex; }
+
+        void run(Vector<Instruction*>& program);
 };
 
 // ----- INSTRUCTIONS -----
@@ -447,6 +459,15 @@ class Instruction {
         // Clean up all children instructions
         virtual ~Instruction() {}
 };
+
+// Run the cpu once all instruction are defined
+void CPU::run(Vector<Instruction*>& program) {
+    while (PC >= 0 && PC < program.size()) {
+        Instruction* currentInstruction = program[PC];
+        PC++; 
+        currentInstruction->execute();
+    }
+}
 
 // ----- MAIN -----
 int main() {
