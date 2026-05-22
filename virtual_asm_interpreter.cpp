@@ -208,6 +208,7 @@ class Vector {
 
         // Reset null vector to default 
         void reinitialize() {
+            delete[] data;
             capacity = 4;
             currentSize = 0;
             data = new T[capacity];
@@ -313,6 +314,8 @@ class Register {
     public:
         Register() : value(0) {}
 
+        virtual ~Register() {}
+
         signed char getValue() const { 
             return value; 
         }
@@ -334,7 +337,7 @@ class Register {
             return value == 0;
         }
 
-    protected:
+    private:
         signed char value;  // 1-byte signed value stored (-128 to 127)
 };
 
@@ -408,14 +411,14 @@ class Memory {
 class CPU {
     private:
         GeneralRegister* registers[8];      // 8 general registers, in a array
-        FlagRegister flags;                 // Flag register
+        FlagRegister* flags;                // Flag register
         Memory memory;                      // 64 byte of memory
         Stack<signed char, 8> stack;        // 8 byte of stack
-        int PC;                             // Program counter
-        int stackIndex;                     // Stack index
+        signed char PC;                     // Program counter
+        signed char SI;                     // Stack index
          
     public:
-        CPU() : PC(0), stackIndex(0)  {
+        CPU(FlagRegister* externalFlags) : flags(externalFlags), PC(0), SI(0)  {
             for (int i = 0; i < 8; ++i) registers[i] = new GeneralRegister(i);
         }
 
@@ -426,7 +429,7 @@ class CPU {
         GeneralRegister& getRegister(int id) { return *registers[id]; }
 
         // Get reference to the CPU's status flags.
-        FlagRegister& getFlags() { return flags; }
+        FlagRegister& getFlags() { return *flags; }
 
         // Get reference to the main memory.
         Memory& getMemory() { return memory; }
@@ -438,9 +441,8 @@ class CPU {
         int getPC() const { return PC; }
         void setPC(int newPC) { PC = newPC; }
 
-        // Get and set the value of the stackIndexr.
-        int getStackIndex() const { return stackIndex; }
-        void setStackIndex(int newStackIndex) { stackIndex = newStackIndex; }
+        // Get the value of the stack index.
+        int getSI() const { return SI; }
 
         void run(Vector<Instruction*>& program);
 };
@@ -450,7 +452,7 @@ class CPU {
 class Instruction {
     public:
         // Will be implemented by all children instructions
-        virtual void execute() = 0; // Pending implementation of CPU class 
+        virtual void execute(CPU& cpu) = 0; // Pending implementation of CPU class 
 
         // Clean up all children instructions
         virtual ~Instruction() {}
@@ -461,7 +463,8 @@ void CPU::run(Vector<Instruction*>& program) {
     while (PC >= 0 && PC < program.size()) {
         Instruction* currentInstruction = program[PC];
         PC++; 
-        currentInstruction->execute();
+        currentInstruction->execute(*this);
+        SI = stack.getTopIndex() + 1;
     }
 }
 
