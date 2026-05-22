@@ -405,18 +405,7 @@ class Memory {
         class IndexOutOfBoundsException {};
 };
 
-// ----- INSTRUCTIONS -----
-// Base Instruction Class
-class Instruction {
-    public:
-        // Will be implemented by all children instructions
-        virtual void execute() = 0; // Pending implementation of CPU class 
-
-        // Clean up all children instructions
-        virtual ~Instruction() {}
-};
-
-// ----- CPU -----
+// CPU
 class CPU {
     private:  // it contains 8 general registers, flag register, memory, stack, program counter, and stack index as private members.
         GeneralRegister* registers[8];
@@ -424,7 +413,8 @@ class CPU {
         Memory memory;                 
         Stack<signed char, 8> stack;   
         int PC;                        
-        int stackIndex;                
+        int stackIndex;       
+         
     public:
         CPU() : PC(0), stackIndex(-1) {
             for (int i = 0; i < 8; ++i) registers[i] = new GeneralRegister(i);
@@ -445,6 +435,17 @@ class CPU {
                 stackIndex = stack.getTopIndex(); 
             }
         }
+};
+
+// ----- INSTRUCTIONS -----
+// Base Instruction Class
+class Instruction {
+    public:
+        // Will be implemented by all children instructions
+        virtual void execute() = 0; // Pending implementation of CPU class 
+
+        // Clean up all children instructions
+        virtual ~Instruction() {}
 };
 
 // ----- MAIN -----
