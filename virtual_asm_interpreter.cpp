@@ -209,6 +209,7 @@ class Vector {
 
         // Reset null vector to default 
         void reinitialize() {
+            delete[] data;
             capacity = 4;
             currentSize = 0;
             data = new T[capacity];
@@ -306,10 +307,15 @@ class Queue {
 };
 
 // ----- MACHINE ARCHITECTURE -----
+// Forward declaration
+class Instruction;
+
 // Register
 class Register {
     public:
         Register() : value(0) {}
+
+        virtual ~Register() {}
 
         signed char getValue() const { 
             return value; 
@@ -332,7 +338,7 @@ class Register {
             return value == 0;
         }
 
-    protected:
+    private:
         signed char value;  // 1-byte signed value stored (-128 to 127)
 };
 
@@ -381,14 +387,10 @@ class FlagRegister {
 // Memory array
 class Memory {
     private:
-        signed char data[64];   // The array of 64 byte memory
+        Vector<signed char> data;   // The array of 64 byte memory
 
     public:
-        Memory() { // limited to 64 byte from 0 to 63
-            for (int i = 0; i < 64; ++i) {
-                data[i] = 0;
-            }
-        }
+        Memory() : data(64, 0) {} // Create data vector with 64 zeros
 
         // To detect whether array index is over or not
         signed char getByte(int address) const {
@@ -399,11 +401,51 @@ class Memory {
         // Sets data at address when it is valid
         void setByte(int address, signed char value) {
             if (address < 0 || address >= 64) throw IndexOutOfBoundsException();
-            data[address] = value;
+            data.replace(address, value);
         }
 
         // Exception classes
         class IndexOutOfBoundsException {};
+};
+
+// CPU
+class CPU {
+    private:
+        GeneralRegister* registers[8];      // 8 general registers, in a array
+        FlagRegister* flags;                // Flag register
+        Memory memory;                      // 64 byte of memory
+        Stack<signed char, 8> stack;        // 8 byte of stack
+        signed char PC;                     // Program counter
+        signed char SI;                     // Stack index
+         
+    public:
+        CPU(FlagRegister* externalFlags) : flags(externalFlags), PC(0), SI(0)  {
+            for (int i = 0; i < 8; ++i) registers[i] = new GeneralRegister(i);
+        }
+
+        // Clean up all registers
+        ~CPU() { for (int i = 0; i < 8; ++i) delete registers[i]; }
+        
+        // Get reference to the specific general register.
+        GeneralRegister& getRegister(int id) { return *registers[id]; }
+
+        // Get reference to the CPU's status flags.
+        FlagRegister& getFlags() { return *flags; }
+
+        // Get reference to the main memory.
+        Memory& getMemory() { return memory; }
+
+        // Get reference to the cpu stack.
+        Stack<signed char, 8>& getStack() { return stack; }
+
+        // Get and set the value of the Program Counter.
+        int getPC() const { return PC; }
+        void setPC(int newPC) { PC = newPC; }
+
+        // Get the value of the stack index.
+        int getSI() const { return SI; }
+
+        void run(Vector<Instruction*>& program);
 };
 
 // ----- INTERPRETER -----
@@ -459,11 +501,21 @@ class Runner {
 class Instruction {
     public:
         // Will be implemented by all children instructions
-        virtual void execute() = 0; // Pending implementation of CPU class 
+        virtual void execute(CPU& cpu) = 0; // Pending implementation of CPU class 
 
         // Clean up all children instructions
         virtual ~Instruction() {}
 };
+
+// Run the cpu once all instruction are defined
+void CPU::run(Vector<Instruction*>& program) {
+    while (PC >= 0 && PC < program.size()) {
+        Instruction* currentInstruction = program[PC];
+        PC++; 
+        currentInstruction->execute(*this);
+        SI = stack.getTopIndex() + 1;
+    }
+}
 
 // ----- MAIN -----
 int main() {
