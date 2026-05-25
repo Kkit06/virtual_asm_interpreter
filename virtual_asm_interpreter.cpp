@@ -456,6 +456,27 @@ class Instruction {
         virtual ~Instruction() {}
 };
 
+// ADD Instruction
+class AddInstruction : public Instruction {
+    private:
+        int destRegister;
+        int srcRegister;
+
+    public:
+        AddInstruction(int destId, int srcId) : destRegister(destId), srcRegister(srcId) {}
+
+        void execute(CPU& cpu) override {
+            GeneralRegister& dest = cpu.getRegister(destRegister);
+            GeneralRegister& src = cpu.getRegister(srcRegister);
+            
+            int result = dest.getValue() + src.getValue();
+            
+            dest.setValue(static_cast<signed char>(result));
+
+            // haven't change flags
+        }
+};
+
 // Run the cpu once all instruction are defined
 void CPU::run(Vector<Instruction*>& program) {
     while (PC >= 0 && PC < program.size()) {
