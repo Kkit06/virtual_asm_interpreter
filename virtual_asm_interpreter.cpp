@@ -445,6 +445,27 @@ class CPU {
         void run(Vector<Instruction*>& program);
 };
 
+// ----- INSTRUCTIONS -----
+// Base Instruction Class
+class Instruction {
+    public:
+        // Will be implemented by all children instructions
+        virtual void execute(CPU& cpu) = 0; // Pending implementation of CPU class 
+
+        // Clean up all children instructions
+        virtual ~Instruction() {}
+};
+
+// Run the cpu once all instruction are defined
+void CPU::run(Vector<Instruction*>& program) {
+    while (PC >= 0 && PC < program.size()) {
+        Instruction* currentInstruction = program[PC];
+        PC++; 
+        currentInstruction->execute(*this);
+        SI = stack.getTopIndex() + 1;
+    }
+}
+
 // ----- INTERPRETER -----
 class Runner {
     public:
@@ -462,7 +483,7 @@ class Runner {
                 else
                     executeCommand(input);
 
-                //cpu.displayDump();
+                //cpu.display();
             }
         }
 
@@ -494,7 +515,7 @@ class Runner {
         }
 
     private:
-        CPU& cpu;                              // Refrence to CPU in the program
+        CPU& cpu;       // Refrence to CPU in the program
 
         Instruction* decode(const std::string& line) {
             // Logic to parse "MOV R1, 5" or "ADD R3, R1"
@@ -504,27 +525,6 @@ class Runner {
             return nullptr; // No command found
         }
 };
-
-// ----- INSTRUCTIONS -----
-// Base Instruction Class
-class Instruction {
-    public:
-        // Will be implemented by all children instructions
-        virtual void execute(CPU& cpu) = 0; // Pending implementation of CPU class 
-
-        // Clean up all children instructions
-        virtual ~Instruction() {}
-};
-
-// Run the cpu once all instruction are defined
-void CPU::run(Vector<Instruction*>& program) {
-    while (PC >= 0 && PC < program.size()) {
-        Instruction* currentInstruction = program[PC];
-        PC++; 
-        currentInstruction->execute(*this);
-        SI = stack.getTopIndex() + 1;
-    }
-}
 
 // ----- MAIN -----
 int main() {
