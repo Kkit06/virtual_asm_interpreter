@@ -500,7 +500,7 @@ class Runner {
                 
                 delete instr;       // Free allocation
             } else {
-                std::cerr << "Syntax Error / Unknown instruction." << std::endl;
+                std::cerr << "Syntax Error / Unknown instruction." << std::endl << std::endl;
             }
         }
 
@@ -528,5 +528,15 @@ class Runner {
 
 // ----- MAIN -----
 int main() {
+    FlagRegister flagsRegister;
+    CPU virtualCpu(&flagsRegister);
+    
+    // Aggregate the CPU inside the runner framework
+    Runner interpreter(virtualCpu); 
+    
+    std::cout << "Virtual ASM Interpreter ('exit' to quit)\n";
+    std::cout << "-------------------------------------------\n";
+    interpreter.run();
+    
     return 0;
 }
