@@ -463,6 +463,18 @@ class ArithmeticInstruction : public Instruction {
         int destRegister;
         int srcRegister;
 
+        void updateFlags(CPU& cpu, int result, signed char destVal, signed char srcVal) {
+            FlagRegister& flags = cpu.getFlags();
+
+            flags.setOF(result > 127);
+            flags.setUF(result < -128);
+
+            int unsignedSum = static_cast<unsigned char>(destVal) + static_cast<unsigned char>(srcVal);
+            flags.setCF(unsignedSum > 255);
+
+            flags.setZF(static_cast<signed char>(result) == 0);
+        }
+
     public:
         ArithmeticInstruction(int destId, int srcId) 
             : destRegister(destId), srcRegister(srcId) {}
@@ -477,14 +489,12 @@ class AddInstruction : public ArithmeticInstruction {
             GeneralRegister& dest = cpu.getRegister(destRegister);
             GeneralRegister& src = cpu.getRegister(srcRegister);
             
-            int result = dest.getValue() + src.getValue();
+            signed char destVal = dest.getValue();
+            signed char srcVal = src.getValue();
             
-            cpu.getFlags().setOF(result > 127);
-            cpu.getFlags().setUF(result < -128);
-
-            int unsignedSum = static_cast<unsigned char>(dest.getValue()) + static_cast<unsigned char>(src.getValue());
-            cpu.getFlags().setCF(unsignedSum > 255);
-            cpu.getFlags().setZF(static_cast<signed char>(result) == 0);
+            int result = destVal + srcVal;
+            
+            updateFlags(cpu, result, destVal, srcVal);
             
             dest.setValue(static_cast<signed char>(result));
         }
