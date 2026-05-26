@@ -471,9 +471,15 @@ class AddInstruction : public Instruction {
             
             int result = dest.getValue() + src.getValue();
             
-            dest.setValue(static_cast<signed char>(result));
+            cpu.getFlags().setOF(result > 127);
+            cpu.getFlags().setUF(result < -128);
 
-            // haven't change flags
+            int unsignedSum = static_cast<unsigned char>(dest.getValue()) + static_cast<unsigned char>(src.getValue());
+            cpu.getFlags().setCF(unsignedSum > 255);
+
+            cpu.getFlags().setZF(static_cast<signed char>(result) == 0);
+            
+            dest.setValue(static_cast<signed char>(result));
         }
 };
 
