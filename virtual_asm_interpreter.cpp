@@ -450,7 +450,7 @@ class CPU {
 class Instruction {
     public:
         // Will be implemented by all children instructions
-        virtual void execute(CPU& cpu) = 0; // Pending implementation of CPU class 
+        virtual void execute(CPU& cpu) = 0;
 
         // Clean up all children instructions
         virtual ~Instruction() {}
@@ -463,12 +463,14 @@ class ArithmeticInstruction : public Instruction {
         int destRegister;
         int srcRegister;
 
+        // Update Flags function that will be used by arithmetic operations
         void updateFlags(CPU& cpu, int result, signed char destVal, signed char srcVal) {
             FlagRegister& flags = cpu.getFlags();
 
             flags.setOF(result > 127);
             flags.setUF(result < -128);
 
+            // result is still int, typecasted to unsigned for CarryFlag and signed for ZeroFlag
             int unsignedSum = static_cast<unsigned char>(destVal) + static_cast<unsigned char>(srcVal);
             flags.setCF(unsignedSum > 255);
 
@@ -485,6 +487,7 @@ class AddInstruction : public ArithmeticInstruction {
     public:
         AddInstruction(int destId, int srcId) : ArithmeticInstruction(destId, srcId) {}
 
+        // Main execute function
         void execute(CPU& cpu) override {
             GeneralRegister& dest = cpu.getRegister(destRegister);
             GeneralRegister& src = cpu.getRegister(srcRegister);
@@ -494,7 +497,7 @@ class AddInstruction : public ArithmeticInstruction {
             
             int result = destVal + srcVal;
             
-            updateFlags(cpu, result, destVal, srcVal);
+            updateFlags(cpu, result, destVal, srcVal);  // Update flags according to result
             
             dest.setValue(static_cast<signed char>(result));
         }
