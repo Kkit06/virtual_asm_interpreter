@@ -456,14 +456,22 @@ class Instruction {
         virtual ~Instruction() {}
 };
 
-// ADD Instruction
-class AddInstruction : public Instruction {
-    private:
+// ----- ARITHMETIC -----
+// Arithmetic Intermediate Class (ADD, SUB, MUL, DIV)
+class ArithmeticInstruction : public Instruction {
+    protected:
         int destRegister;
         int srcRegister;
 
     public:
-        AddInstruction(int destId, int srcId) : destRegister(destId), srcRegister(srcId) {}
+        ArithmeticInstruction(int destId, int srcId) 
+            : destRegister(destId), srcRegister(srcId) {}
+};
+
+// ADD instruction
+class AddInstruction : public ArithmeticInstruction {
+    public:
+        AddInstruction(int destId, int srcId) : ArithmeticInstruction(destId, srcId) {}
 
         void execute(CPU& cpu) override {
             GeneralRegister& dest = cpu.getRegister(destRegister);
@@ -476,7 +484,6 @@ class AddInstruction : public Instruction {
 
             int unsignedSum = static_cast<unsigned char>(dest.getValue()) + static_cast<unsigned char>(src.getValue());
             cpu.getFlags().setCF(unsignedSum > 255);
-
             cpu.getFlags().setZF(static_cast<signed char>(result) == 0);
             
             dest.setValue(static_cast<signed char>(result));
