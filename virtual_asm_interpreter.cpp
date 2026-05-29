@@ -540,14 +540,14 @@ void CPU::run(Vector<Instruction*>& program) {
     }
 }
 
-class InputInstruction : public Instruction {
+class InputInstruction : public Instruction {//make sure the value is suitable for the requirement
     private:
         GeneralRegister& reg;
         FlagRegister& flags;
     public:
         InputInstruction(GeneralRegister& r, FlagRegister& f) : reg(r), flags(f) {} //initialize the reference variables
 
-        void execute(CPU& cpu) override {
+        void execute(CPU& cpu) override { // determine the value is it in the range of -128 to 127
             int value;
             std::cout << "?\n";
             std::cin >> value;
