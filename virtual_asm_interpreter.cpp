@@ -442,6 +442,11 @@ class CPU {
             registers{GeneralRegister(0), GeneralRegister(1), GeneralRegister(2), GeneralRegister(3),
                       GeneralRegister(4), GeneralRegister(5), GeneralRegister(6), GeneralRegister(7)} {}
 
+        GeneralRegister& getRegister(int id) {
+            if (id < 0 || id > 7) throw CPU::RegisterOverflowException();
+            return registers[id];
+        }
+
         // Display everything data store into the cpu
         void display() {
             std::cout << "#Begin#\n";
@@ -516,7 +521,13 @@ class CPU {
         // Get the value of the stack index.
         int getSI() const { return SI; }
 
+        // Get refrence to flags
+        FlagRegister& getFlags() { return *flags; }
+
         void run(Vector<Instruction*>& program);
+
+        // Exception classes
+        class RegisterOverflowException {}; 
 };
 
 // ----- INSTRUCTIONS -----
@@ -540,35 +551,68 @@ void CPU::run(Vector<Instruction*>& program) {
     }
 }
 
-class InputInstruction : public Instruction {//make sure the value is suitable for the requirement
+class InputInstruction : public Instruction {
     private:
-        GeneralRegister& reg;
+        GeneralRegister* reg;
         FlagRegister& flags;
+
+        void checkInput(int& value) {
+            // If user enters text or an invalid value
+            if (!(std::cin >> value)) {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Discard bad input
+                value = 0;
+            } else {
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Clear the leftover '\n'
+            }
+        }
+
     public:
-        InputInstruction(GeneralRegister& r, FlagRegister& f) : reg(r), flags(f) {} //initialize the reference variables
+        InputInstruction(CPU& cpu, const std::string& regStr) : flags(cpu.getFlags()), reg(nullptr) {
+            if (regStr.length() < 2 || regStr[0] != 'R') {
+                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
+                throw InputInstruction::InvalidSyntaxException();
+            }
+
+            try {
+                int regId = std::stoi(regStr.substr(1)); // Remove first character, convert to int
+                
+                if (regId >= 0 && regId < 8) reg = &cpu.getRegister(regId);
+                else throw CPU::RegisterOverflowException();
+            } catch (const CPU::RegisterOverflowException&) {
+                std::cout << "ERROR: Invalid register at line " << cpu.getPC() << "\n\n";
+                throw;
+            } catch (...) {
+                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
+                throw;
+            }
+        }
 
         void execute(CPU& cpu) override { // determine the value is it in the range of -128 to 127
+            if (!reg) { return; }
             int value;
-            std::cout << "?\n";
-            std::cin >> value;
+            
+            std::cout << "\n? " << std::flush; 
+            checkInput(value);
+
             flags.setOF(false);
             flags.setUF(false);
             flags.setZF(false);   
 
             if (value > 127) {
-                reg.setValue(127);
+                reg->setValue(127);
                 flags.setOF(true);
             } else if (value < -128) {
-                reg.setValue(-128);
+                reg->setValue(-128);
                 flags.setUF(true);
             } else {
-                reg.setValue(value);
+                reg->setValue(value);
                 if (value == 0) flags.setZF(true);
             }
-
-            reg.setValue(value);
-
         }
+
+        // Exception classes
+        class InvalidSyntaxException {}; 
 };
 
 // ----- INTERPRETER -----
@@ -586,7 +630,7 @@ class Runner {
 
                 if (input.find("run ") == 0)
                     shouldDisplay = loadAndRunFile(input.substr(4));
-                else if (input.find("display") == 0)
+                else if (input.find("status") == 0)
                     cpu.display();
                 else
                     shouldDisplay = executeCommand(input);
@@ -599,22 +643,27 @@ class Runner {
         bool executeCommand(const std::string& cmd) {
             if (cmd.empty()) return false;
 
-            Instruction* instr = decode(cmd);
-            if (instr) {
-                Vector<Instruction*> program;
-                program.push_back(instr);
-                
-                try {
+            Instruction* instr = nullptr;
+
+            try {
+                instr = decode(cmd);
+
+                if (instr) {
+                    Vector<Instruction*> program;
+                    program.push_back(instr);
+
+                    cpu.setPC(0);
                     cpu.run(program);   
-                    delete instr;       // Free allocation
+                    delete instr;           // Free allocation
                     return true;
-                } 
-                catch (...) {
-                    delete instr;       // Free allocation
+                }
+                else {
+                    std::cout << "ERROR: Syntax Error / Unknown instruction.\n\n";
                     return false;
                 }
-            } else {
-                std::cout << "ERROR: Syntax Error / Unknown instruction.\n\n";
+            }
+            catch (...) {
+                if (instr) delete instr;    // Free allocation
                 return false;
             }
         }
@@ -639,6 +688,7 @@ class Runner {
         CPU& cpu;       // Refrence to CPU in the program
 
         Instruction* decode(const std::string& line) {
+            if (line.rfind("INPUT ", 0) == 0) return new InputInstruction(cpu, line.substr(6));
             // Logic to parse "MOV R1, 5" or "ADD R3, R1"
             // Returns a pointer to a new Instruction subclass
             // Example: if (line == "MOV") return new MOVInstruction(...);
