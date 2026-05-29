@@ -540,6 +540,37 @@ void CPU::run(Vector<Instruction*>& program) {
     }
 }
 
+class InputInstruction : public Instruction {
+    private:
+        GeneralRegister& reg;
+        FlagRegister& flags;
+    public:
+        InputInstruction(GeneralRegister& r, FlagRegister& f) : reg(r), flags(f) {} //initialize the reference variables
+
+        void execute(CPU& cpu) override {
+            int value;
+            std::cout << "?\n";
+            std::cin >> value;
+            flags.setOF(false);
+            flags.setUF(false);
+            flags.setZF(false);   
+
+            if (value > 127) {
+                reg.setValue(127);
+                flags.setOF(true);
+            } else if (value < -128) {
+                reg.setValue(-128);
+                flags.setUF(true);
+            } else {
+                reg.setValue(value);
+                if (value == 0) flags.setZF(true);
+            }
+
+            reg.setValue(value);
+
+        }
+};
+
 // ----- INTERPRETER -----
 class Runner {
     public:
@@ -615,6 +646,7 @@ class Runner {
             return nullptr; // No command found
         }
 };
+
 
 // ----- MAIN -----
 int main() {
