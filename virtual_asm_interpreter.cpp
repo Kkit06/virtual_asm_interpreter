@@ -546,6 +546,7 @@ class Runner {
         Runner(CPU& externalCpu) : cpu(externalCpu) {}
 
         void run() {
+            bool shouldDisplay = false;
             std::string input;
 
             while (true) {
@@ -553,17 +554,19 @@ class Runner {
                 if (!std::getline(std::cin, input) || input == "exit") break;
 
                 if (input.find("run ") == 0)
-                    loadAndRunFile(input.substr(4));
+                    shouldDisplay = loadAndRunFile(input.substr(4));
+                else if (input.find("display") == 0)
+                    cpu.display();
                 else
-                    executeCommand(input);
+                    shouldDisplay = executeCommand(input);
 
-                cpu.display();
+                if (shouldDisplay) cpu.display();
             }
         }
 
         // Convert single command into a single element vector
-        void executeCommand(const std::string& cmd) {
-            if (cmd.empty()) return;
+        bool executeCommand(const std::string& cmd) {
+            if (cmd.empty()) return false;
 
             Instruction* instr = decode(cmd);
             if (instr) {
@@ -573,17 +576,20 @@ class Runner {
                 try {
                     cpu.run(program);   
                     delete instr;       // Free allocation
+                    return true;
                 } 
                 catch (...) {
                     delete instr;       // Free allocation
+                    return false;
                 }
             } else {
                 std::cout << "ERROR: Syntax Error / Unknown instruction.\n\n";
+                return false;
             }
         }
 
         // Read entire file into a vecotr of instruction
-        void loadAndRunFile(const std::string& filename) {
+        bool loadAndRunFile(const std::string& filename) {
             // Reset cpu to 0 state
             // Reads file into vector, ignores empty lines
             // Updates PC from 0 to total instructions 
@@ -592,6 +598,10 @@ class Runner {
             // Stop and clear the vector if catches a throw
             
             std::cout << "Sorry bang, not implemented yet\n";
+
+            // Wrap cpu.run in a try-catch.
+            // Return true if it completes, false if a throw is caught.
+            return false;
         }
 
     private:
