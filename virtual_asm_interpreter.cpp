@@ -546,46 +546,94 @@ class Instruction {
 // Arithmetic Intermediate Class (ADD, SUB, MUL, DIV)
 class ArithmeticInstruction : public Instruction {
     protected:
-        int destRegister;
-        int srcRegister;
+        GeneralRegister* dest;
+        GeneralRegister* src;
+        int immediateValue;
+        bool useImmediate;
+        FlagRegister& flags;
 
-        // Update Flags function that will be used by arithmetic operations
-        void updateFlags(CPU& cpu, int result, signed char destVal, signed char srcVal) {
-            FlagRegister& flags = cpu.getFlags();
-
+        void updateFlags(int result, unsigned int unsignedResult) {
             flags.setOF(result > 127);
             flags.setUF(result < -128);
-
-            // result is still int, typecasted to unsigned for CarryFlag and signed for ZeroFlag
-            int unsignedSum = static_cast<unsigned char>(destVal) + static_cast<unsigned char>(srcVal);
-            flags.setCF(unsignedSum > 255);
-
+            flags.setCF(unsignedResult > 255);
             flags.setZF(static_cast<signed char>(result) == 0);
         }
 
     public:
-        ArithmeticInstruction(int destId, int srcId) 
-            : destRegister(destId), srcRegister(srcId) {}
+        ArithmeticInstruction(CPU& cpu, const std::string& args) : flags(cpu.getFlags()), dest(nullptr), src(nullptr), immediateValue(0), useImmediate(false) {
+            
+            size_t commaPos = args.find(',');
+            if (commaPos == std::string::npos) {
+                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
+                throw ArithmeticInstruction::InvalidSyntaxException();
+            }
+
+            std::string destStr = args.substr(0, commaPos);
+            std::string srcStr = args.substr(commaPos + 1);
+
+            size_t destR = destStr.find('R');
+            if (destR == std::string::npos) {
+                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
+                throw ArithmeticInstruction::InvalidSyntaxException();
+            }
+
+            try {
+                int destId = std::stoi(destStr.substr(destR + 1));
+
+                if (destId >= 0 && destId < 8) {
+                    dest = &cpu.getRegister(destId);
+                } else {
+                    throw CPU::RegisterOverflowException();
+                }
+
+                size_t srcR = srcStr.find('R');
+
+                if (srcR != std::string::npos) {
+                    int srcId = std::stoi(srcStr.substr(srcR + 1));
+
+                    if (srcId >= 0 && srcId < 8) {
+                        src = &cpu.getRegister(srcId);
+                    } else {
+                        throw CPU::RegisterOverflowException();
+                    }
+                } else {
+                    immediateValue = std::stoi(srcStr);
+                    useImmediate = true;
+                }
+                
+            } catch (const CPU::RegisterOverflowException&) {
+                std::cout << "ERROR: Invalid register at line " << cpu.getPC() << "\n\n";
+                throw;
+            } catch (...) {
+                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
+                throw ArithmeticInstruction::InvalidSyntaxException();
+            }
+        }
+
+        class InvalidSyntaxException {};
 };
 
 // ADD instruction
 class AddInstruction : public ArithmeticInstruction {
     public:
-        AddInstruction(int destId, int srcId) : ArithmeticInstruction(destId, srcId) {}
+        AddInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
 
-        // Main execute function
         void execute(CPU& cpu) override {
-            GeneralRegister& dest = cpu.getRegister(destRegister);
-            GeneralRegister& src = cpu.getRegister(srcRegister);
-            
-            signed char destVal = dest.getValue();
-            signed char srcVal = src.getValue();
-            
+            if (!dest) return;
+
+            int destVal = dest->getValue();
+            int srcVal;
+
+            if (useImmediate) {
+                srcVal = immediateValue;
+            } else {
+                srcVal = src->getValue();
+            }
+
             int result = destVal + srcVal;
-            
-            updateFlags(cpu, result, destVal, srcVal);  // Update flags according to result
-            
-            dest.setValue(static_cast<signed char>(result));
+            unsigned int unsignedResult = static_cast<unsigned char>(dest->getByte()) + static_cast<unsigned char>(srcVal);
+            updateFlags(result, unsignedResult);
+            dest->setValue(result);
         }
 };
 
@@ -737,6 +785,7 @@ class Runner {
 
         Instruction* decode(const std::string& line) {
             if (line.rfind("INPUT ", 0) == 0) return new InputInstruction(cpu, line.substr(6));
+            if (line.rfind("ADD ", 0) == 0) return new AddInstruction(cpu, line.substr(4));
             // Logic to parse "MOV R1, 5" or "ADD R3, R1"
             // Returns a pointer to a new Instruction subclass
             // Example: if (line == "MOV") return new MOVInstruction(...);
