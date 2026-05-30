@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <string>
 
 // ----- CUSTOM LIBRARY -----
@@ -317,13 +318,11 @@ class Register {
 
         virtual ~Register() {}
 
-        signed char getValue() const { 
-            return value; 
-        }
+        signed char getByte() const { return value; }
+        int getValue() const { return static_cast<int>(value); }
 
-        void setValue(signed char newValue) { 
-            value = newValue; 
-        }
+        void setByte(signed char newValue) { value = newValue; }
+        void setValue(int newValue) { value = static_cast<signed char>(newValue); }
 
         // Get register value in 8 bit binary
         void getBinary(int bits[8]) const {
@@ -373,10 +372,10 @@ class FlagRegister {
         void setZF(bool val) { ZF = val; }
 
         // Get value functions
-        bool getOF() const { return OF; }
-        bool getUF() const { return UF; }
-        bool getCF() const { return CF; }
-        bool getZF() const { return ZF; }
+        int getOF() const { return static_cast<int>(OF); }
+        int getUF() const { return static_cast<int>(UF); }
+        int getCF() const { return static_cast<int>(CF); }
+        int getZF() const { return static_cast<int>(ZF); }
 
         // For RESET instruction to reset all flags
         void resetFlags() {
@@ -392,16 +391,28 @@ class Memory {
     public:
         Memory() : data(64, 0) {} // Create data vector with 64 zeros
 
-        // To detect whether array index is over or not
+        // Get the address byte
         signed char getByte(int address) const {
             if (address < 0 || address >= 64) throw IndexOutOfBoundsException();
             return data[address];
         }
 
-        // Sets data at address when it is valid
+        // Get the address value
+        int getValue(int address) const {
+            if (address < 0 || address >= 64) throw IndexOutOfBoundsException();
+            return static_cast<int>(data[address]);
+        }
+
+        // Sets signed char at address when it is valid
         void setByte(int address, signed char value) {
             if (address < 0 || address >= 64) throw IndexOutOfBoundsException();
             data.replace(address, value);
+        }
+
+        // Sets int at address when it is valid
+        void setValue(int address, int value) {
+            if (address < 0 || address >= 64) throw IndexOutOfBoundsException();
+            data.replace(address, static_cast<signed char>(value));
         }
 
         // Exception classes
@@ -417,23 +428,91 @@ class CPU {
         Stack<signed char, 8> stack;        // 8 byte of stack
         signed char PC;                     // Program counter
         signed char SI;                     // Stack index
+
+        // Format the data to 4 digit
+        void formatDisplay(int value) {
+            if (value < 0)
+                std::cout << "#-" << std::setw(3) << std::setfill('0') << -value;
+            else
+                std::cout << "#" << std::setw(4) << std::setfill('0') << value;
+        }
          
     public:
         CPU(FlagRegister* externalFlags) : flags(externalFlags), PC(0), SI(0),
             registers{GeneralRegister(0), GeneralRegister(1), GeneralRegister(2), GeneralRegister(3),
                       GeneralRegister(4), GeneralRegister(5), GeneralRegister(6), GeneralRegister(7)} {}
 
-        // Get reference to the specific general register.
-        GeneralRegister& getRegister(int id) { return registers[id]; }
+        GeneralRegister& getRegister(int id) {
+            if (id < 0 || id > 7) throw CPU::RegisterOverflowException();
+            return registers[id];
+        }
 
-        // Get reference to the CPU's status flags.
-        FlagRegister& getFlags() { return *flags; }
+        // Display everything data store into the cpu
+        void display() {
+            std::cout << "#Begin#\n";
 
-        // Get reference to the main memory.
-        Memory& getMemory() { return memory; }
+            // General registers
+            std::cout << "#Registers";
+            for (const GeneralRegister reg : registers) {
+                formatDisplay(static_cast<int>(reg.getValue()));
+            }
+            std::cout << "#\n";
 
-        // Get reference to the cpu stack.
-        Stack<signed char, 8>& getStack() { return stack; }
+            // Flags
+            std::cout << "#Flags#" << flags->getCF() << "#" << flags->getZF() << "#" << flags->getUF() << "#" << flags->getOF() << "#\n";
+
+            // Program Counter
+            std::cout << "#PC";
+            formatDisplay(static_cast<int>(PC));
+            std::cout << "#\n";
+
+            // Memory
+            std::cout << "#Memory#\n";
+            for (int i = 0; i < 8; i++) {
+                for (int j = 0; j < 8; j++) {
+                    formatDisplay(memory.getValue(i * 8 + j));
+                }
+                std::cout << "#\n";
+            }
+
+            std::cout << "#End#\n\n";
+        }
+
+        // Get the top most value in the stack and pop it
+        signed char getStackByte() {
+            try {
+                return stack.pop(); 
+            } 
+            catch (const Stack<signed char, 8>::UnderflowException&) {
+                std::cout << "ERROR: Stack is empty.\n\n";
+                throw;
+            }
+        }
+
+        int getStackValue() {
+            try {
+                return static_cast<int>(stack.pop()); 
+            } 
+            catch (const Stack<signed char, 8>::UnderflowException&) {
+                std::cout << "ERROR: Stack is empty.\n\n";
+                throw;
+            }
+        }
+
+        // Push value into cpu's stack
+        void pushStackByte(signed char value) {
+            try {
+                stack.push(value); 
+            } 
+            catch (const Stack<signed char, 8>::OverflowException&) {
+                std::cout << "ERROR: Stack Overflow.\n\n";
+                throw;
+            }
+        }
+
+        void pushStackValue(int value) {
+            pushStackByte(static_cast<signed char>(value));
+        }
 
         // Get and set the value of the Program Counter.
         int getPC() const { return PC; }
@@ -442,7 +521,13 @@ class CPU {
         // Get the value of the stack index.
         int getSI() const { return SI; }
 
+        // Get refrence to flags
+        FlagRegister& getFlags() { return *flags; }
+
         void run(Vector<Instruction*>& program);
+
+        // Exception classes
+        class RegisterOverflowException {}; 
 };
 
 // ----- INSTRUCTIONS -----
@@ -513,12 +598,77 @@ void CPU::run(Vector<Instruction*>& program) {
     }
 }
 
+class InputInstruction : public Instruction {
+    private:
+        GeneralRegister* reg;
+        FlagRegister& flags;
+
+        void checkInput(int& value) {
+            // If user enters text or an invalid value
+            if (!(std::cin >> value)) {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Discard bad input
+                value = 0;
+            } else {
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Clear the leftover '\n'
+            }
+        }
+
+    public:
+        InputInstruction(CPU& cpu, const std::string& regStr) : flags(cpu.getFlags()), reg(nullptr) {
+            if (regStr.length() < 2 || regStr[0] != 'R') {
+                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
+                throw InputInstruction::InvalidSyntaxException();
+            }
+
+            try {
+                int regId = std::stoi(regStr.substr(1)); // Remove first character, convert to int
+                
+                if (regId >= 0 && regId < 8) reg = &cpu.getRegister(regId);
+                else throw CPU::RegisterOverflowException();
+            } catch (const CPU::RegisterOverflowException&) {
+                std::cout << "ERROR: Invalid register at line " << cpu.getPC() << "\n\n";
+                throw;
+            } catch (...) {
+                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
+                throw;
+            }
+        }
+
+        void execute(CPU& cpu) override { // determine the value is it in the range of -128 to 127
+            if (!reg) { return; }
+            int value;
+            
+            std::cout << "\n? " << std::flush; 
+            checkInput(value);
+
+            flags.setOF(false);
+            flags.setUF(false);
+            flags.setZF(false);   
+
+            if (value > 127) {
+                reg->setValue(127);
+                flags.setOF(true);
+            } else if (value < -128) {
+                reg->setValue(-128);
+                flags.setUF(true);
+            } else {
+                reg->setValue(value);
+                if (value == 0) flags.setZF(true);
+            }
+        }
+
+        // Exception classes
+        class InvalidSyntaxException {}; 
+};
+
 // ----- INTERPRETER -----
 class Runner {
     public:
         Runner(CPU& externalCpu) : cpu(externalCpu) {}
 
         void run() {
+            bool shouldDisplay = false;
             std::string input;
 
             while (true) {
@@ -526,45 +676,66 @@ class Runner {
                 if (!std::getline(std::cin, input) || input == "exit") break;
 
                 if (input.find("run ") == 0)
-                    loadAndRunFile(input.substr(4));
+                    shouldDisplay = loadAndRunFile(input.substr(4));
+                else if (input.find("status") == 0)
+                    cpu.display();
                 else
-                    executeCommand(input);
+                    shouldDisplay = executeCommand(input);
 
-                //cpu.display();
+                if (shouldDisplay) cpu.display();
             }
         }
 
         // Convert single command into a single element vector
-        void executeCommand(const std::string& cmd) {
-            if (cmd.empty()) return;
+        bool executeCommand(const std::string& cmd) {
+            if (cmd.empty()) return false;
 
-            Instruction* instr = decode(cmd);
-            if (instr) {
-                Vector<Instruction*> program;
-                program.push_back(instr);
-                
-                cpu.run(program);   // Delegate to CPU execution unit
-                
-                delete instr;       // Free allocation
-            } else {
-                std::cerr << "Syntax Error / Unknown instruction." << std::endl << std::endl;
+            Instruction* instr = nullptr;
+
+            try {
+                instr = decode(cmd);
+
+                if (instr) {
+                    Vector<Instruction*> program;
+                    program.push_back(instr);
+
+                    cpu.setPC(0);
+                    cpu.run(program);   
+                    delete instr;           // Free allocation
+                    return true;
+                }
+                else {
+                    std::cout << "ERROR: Syntax Error / Unknown instruction.\n\n";
+                    return false;
+                }
+            }
+            catch (...) {
+                if (instr) delete instr;    // Free allocation
+                return false;
             }
         }
 
         // Read entire file into a vecotr of instruction
-        void loadAndRunFile(const std::string& filename) {
+        bool loadAndRunFile(const std::string& filename) {
             // Reset cpu to 0 state
             // Reads file into vector, ignores empty lines
             // Updates PC from 0 to total instructions 
-            // Calls executeCommand() in a loop
+            // Loop decode for every line and store it in a vector
+            // Run the vector
+            // Stop and clear the vector if catches a throw
             
             std::cout << "Sorry bang, not implemented yet\n";
+
+            // Wrap cpu.run in a try-catch.
+            // Return true if it completes, false if a throw is caught.
+            return false;
         }
 
     private:
         CPU& cpu;       // Refrence to CPU in the program
 
         Instruction* decode(const std::string& line) {
+            if (line.rfind("INPUT ", 0) == 0) return new InputInstruction(cpu, line.substr(6));
             // Logic to parse "MOV R1, 5" or "ADD R3, R1"
             // Returns a pointer to a new Instruction subclass
             // Example: if (line == "MOV") return new MOVInstruction(...);
@@ -572,6 +743,7 @@ class Runner {
             return nullptr; // No command found
         }
 };
+
 
 // ----- MAIN -----
 int main() {
