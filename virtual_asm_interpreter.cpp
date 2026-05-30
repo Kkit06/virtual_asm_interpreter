@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <limits>
 
 // ----- CUSTOM LIBRARY -----
 // Stack (Last In, First Out)
