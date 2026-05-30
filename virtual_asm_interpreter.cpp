@@ -548,8 +548,12 @@ class ArithmeticInstruction : public Instruction {
     protected:
         GeneralRegister* dest;
         GeneralRegister* src;
+
+        // When source register slot in command is not a register (ADD R2, R1) but a literal value (67).
+        // E.g. (ADD R2, 67), immediateValue = 67, useImmediate = true;
         int immediateValue;
         bool useImmediate;
+
         FlagRegister& flags;
 
         void updateFlags(int result, unsigned int unsignedResult) {
@@ -562,15 +566,18 @@ class ArithmeticInstruction : public Instruction {
     public:
         ArithmeticInstruction(CPU& cpu, const std::string& args) : flags(cpu.getFlags()), dest(nullptr), src(nullptr), immediateValue(0), useImmediate(false) {
             
+            // Find "," from command
             size_t commaPos = args.find(',');
             if (commaPos == std::string::npos) {
                 std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
                 throw ArithmeticInstruction::InvalidSyntaxException();
             }
 
+            // Grab destination register and source register
             std::string destStr = args.substr(0, commaPos);
             std::string srcStr = args.substr(commaPos + 1);
 
+            // Find "R" from destination register
             size_t destR = destStr.find('R');
             if (destR == std::string::npos) {
                 std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
@@ -586,6 +593,7 @@ class ArithmeticInstruction : public Instruction {
                     throw CPU::RegisterOverflowException();
                 }
 
+                // Find "R" from source register, if entered literal value, useImmediate = true
                 size_t srcR = srcStr.find('R');
 
                 if (srcR != std::string::npos) {
@@ -630,7 +638,10 @@ class AddInstruction : public ArithmeticInstruction {
                 srcVal = src->getValue();
             }
 
+            // Actually perform ADD here
             int result = destVal + srcVal;
+
+            // Change to unsigned for Carry Flow
             unsigned int unsignedResult = static_cast<unsigned char>(dest->getByte()) + static_cast<unsigned char>(srcVal);
             updateFlags(result, unsignedResult);
             dest->setValue(result);
