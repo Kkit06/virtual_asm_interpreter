@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <limits>
 
 // ----- CUSTOM LIBRARY -----
 // Stack (Last In, First Out)
@@ -535,21 +536,108 @@ class CPU {
 class Instruction {
     public:
         // Will be implemented by all children instructions
-        virtual void execute(CPU& cpu) = 0; // Pending implementation of CPU class 
+        virtual void execute(CPU& cpu) = 0;
 
         // Clean up all children instructions
         virtual ~Instruction() {}
+
+        // Exception classes
+        class InvalidSyntaxException {}; 
 };
 
-// Run the cpu once all instruction are defined
-void CPU::run(Vector<Instruction*>& program) {
-    while (PC >= 0 && PC < program.size()) {
-        Instruction* currentInstruction = program[PC];
-        PC++; 
-        currentInstruction->execute(*this);
-        SI = stack.getTopIndex() + 1;
-    }
-}
+// ----- ARITHMETIC -----
+// Arithmetic Intermediate Class (ADD, SUB, MUL, DIV)
+class ArithmeticInstruction : public Instruction {
+    protected:
+        GeneralRegister* dest;
+        GeneralRegister* src;
+
+        // When source register slot in command is not a register (ADD R2, R1) but a literal value (67).
+        // E.g. (ADD R2, 67), immediateValue = 67, useImmediate = true;
+        int immediateValue;
+        bool useImmediate;
+
+        FlagRegister& flags;
+
+        void updateFlags(int result, unsigned int unsignedResult) {
+            flags.setOF(result > 127);
+            flags.setUF(result < -128);
+            flags.setCF(unsignedResult > 255);
+            flags.setZF(static_cast<signed char>(result) == 0);
+        }
+
+        size_t findChar(CPU& cpu, const std::string& word, char charToFind) {
+            size_t character = word.find(charToFind);
+            if (character == std::string::npos) throw Instruction::InvalidSyntaxException();
+
+            return character;
+        }
+
+        GeneralRegister* findRegister(CPU& cpu, std::string str, size_t pos) {
+            int id = std::stoi(str.substr(pos + 1));
+            if (id < 0 || id >= 8) throw CPU::RegisterOverflowException();
+
+            return &cpu.getRegister(id);
+        }
+
+    public:
+        ArithmeticInstruction(CPU& cpu, const std::string& args) : flags(cpu.getFlags()), dest(nullptr), src(nullptr), immediateValue(0), useImmediate(false) {        
+            try {
+                // Find "," from command
+                size_t commaPos = findChar(cpu, args, ',');
+
+                // Grab destination register and source register
+                std::string destStr = args.substr(0, commaPos);
+                std::string srcStr = args.substr(commaPos + 1);
+
+                // Find "R" from destination register
+                size_t destR = findChar(cpu, destStr, 'R');
+
+                dest = findRegister(cpu, destStr,destR);
+
+                // Find "R" from source register, if entered literal value, useImmediate = true
+                size_t srcR = srcStr.find('R');
+
+                if (srcR != std::string::npos) {
+                    src = findRegister(cpu, srcStr,srcR);
+                } else {
+                    immediateValue = std::stoi(srcStr);
+                    useImmediate = true;
+                }
+                
+            } catch (const CPU::RegisterOverflowException&) {
+                std::cout << "ERROR: Invalid register at line " << cpu.getPC() << "\n\n";
+                throw;
+            } catch (...) {
+                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
+                throw;
+            }
+        }
+};
+
+// ADD instruction
+class AddInstruction : public ArithmeticInstruction {
+    public:
+        AddInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
+
+        void execute(CPU& cpu) override {
+            if (!dest) return;
+
+            int destVal = dest->getValue();
+            int srcVal;
+
+            if (useImmediate) srcVal = immediateValue;
+            else srcVal = src->getValue();
+
+            // Actually perform ADD here
+            int result = destVal + srcVal;
+
+            // Change to unsigned for Carry Flow
+            unsigned int unsignedResult = static_cast<unsigned char>(dest->getByte()) + static_cast<unsigned char>(srcVal);
+            updateFlags(result, unsignedResult);
+            dest->setValue(result);
+        }
+};
 
 class InputInstruction : public Instruction {
     private:
@@ -571,7 +659,7 @@ class InputInstruction : public Instruction {
         InputInstruction(CPU& cpu, const std::string& regStr) : flags(cpu.getFlags()), reg(nullptr) {
             if (regStr.length() < 2 || regStr[0] != 'R') {
                 std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
-                throw InputInstruction::InvalidSyntaxException();
+                throw Instruction::InvalidSyntaxException();
             }
 
             try {
@@ -610,10 +698,17 @@ class InputInstruction : public Instruction {
                 if (value == 0) flags.setZF(true);
             }
         }
-
-        // Exception classes
-        class InvalidSyntaxException {}; 
 };
+
+// Run the cpu once all instruction are defined
+void CPU::run(Vector<Instruction*>& program) {
+    while (PC >= 0 && PC < program.size()) {
+        Instruction* currentInstruction = program[PC];
+        PC++; 
+        currentInstruction->execute(*this);
+        SI = stack.getTopIndex() + 1;
+    }
+}
 
 // ----- INTERPRETER -----
 class Runner {
@@ -689,6 +784,7 @@ class Runner {
 
         Instruction* decode(const std::string& line) {
             if (line.rfind("INPUT ", 0) == 0) return new InputInstruction(cpu, line.substr(6));
+            if (line.rfind("ADD ", 0) == 0) return new AddInstruction(cpu, line.substr(4));
             // Logic to parse "MOV R1, 5" or "ADD R3, R1"
             // Returns a pointer to a new Instruction subclass
             // Example: if (line == "MOV") return new MOVInstruction(...);
@@ -696,7 +792,6 @@ class Runner {
             return nullptr; // No command found
         }
 };
-
 
 // ----- MAIN -----
 int main() {
