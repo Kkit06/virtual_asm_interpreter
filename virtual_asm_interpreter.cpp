@@ -540,6 +540,9 @@ class Instruction {
 
         // Clean up all children instructions
         virtual ~Instruction() {}
+
+        // Exception classes
+        class InvalidSyntaxException {}; 
 };
 
 // ----- ARITHMETIC -----
@@ -563,47 +566,40 @@ class ArithmeticInstruction : public Instruction {
             flags.setZF(static_cast<signed char>(result) == 0);
         }
 
+        size_t findChar(CPU& cpu, const std::string& word, char charToFind) {
+            size_t character = word.find(charToFind);
+            if (character == std::string::npos) throw Instruction::InvalidSyntaxException();
+
+            return character;
+        }
+
+        GeneralRegister* findRegister(CPU& cpu, std::string str, size_t pos) {
+            int id = std::stoi(str.substr(pos + 1));
+            if (id < 0 || id >= 8) throw CPU::RegisterOverflowException();
+
+            return &cpu.getRegister(id);
+        }
+
     public:
-        ArithmeticInstruction(CPU& cpu, const std::string& args) : flags(cpu.getFlags()), dest(nullptr), src(nullptr), immediateValue(0), useImmediate(false) {
-            
-            // Find "," from command
-            size_t commaPos = args.find(',');
-            if (commaPos == std::string::npos) {
-                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
-                throw ArithmeticInstruction::InvalidSyntaxException();
-            }
-
-            // Grab destination register and source register
-            std::string destStr = args.substr(0, commaPos);
-            std::string srcStr = args.substr(commaPos + 1);
-
-            // Find "R" from destination register
-            size_t destR = destStr.find('R');
-            if (destR == std::string::npos) {
-                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
-                throw ArithmeticInstruction::InvalidSyntaxException();
-            }
-
+        ArithmeticInstruction(CPU& cpu, const std::string& args) : flags(cpu.getFlags()), dest(nullptr), src(nullptr), immediateValue(0), useImmediate(false) {        
             try {
-                int destId = std::stoi(destStr.substr(destR + 1));
+                // Find "," from command
+                size_t commaPos = findChar(cpu, args, ',');
 
-                if (destId >= 0 && destId < 8) {
-                    dest = &cpu.getRegister(destId);
-                } else {
-                    throw CPU::RegisterOverflowException();
-                }
+                // Grab destination register and source register
+                std::string destStr = args.substr(0, commaPos);
+                std::string srcStr = args.substr(commaPos + 1);
+
+                // Find "R" from destination register
+                size_t destR = findChar(cpu, destStr, 'R');
+
+                dest = findRegister(cpu, destStr,destR);
 
                 // Find "R" from source register, if entered literal value, useImmediate = true
                 size_t srcR = srcStr.find('R');
 
                 if (srcR != std::string::npos) {
-                    int srcId = std::stoi(srcStr.substr(srcR + 1));
-
-                    if (srcId >= 0 && srcId < 8) {
-                        src = &cpu.getRegister(srcId);
-                    } else {
-                        throw CPU::RegisterOverflowException();
-                    }
+                    src = findRegister(cpu, srcStr,srcR);
                 } else {
                     immediateValue = std::stoi(srcStr);
                     useImmediate = true;
@@ -614,11 +610,9 @@ class ArithmeticInstruction : public Instruction {
                 throw;
             } catch (...) {
                 std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
-                throw ArithmeticInstruction::InvalidSyntaxException();
+                throw;
             }
         }
-
-        class InvalidSyntaxException {};
 };
 
 // ADD instruction
@@ -632,11 +626,8 @@ class AddInstruction : public ArithmeticInstruction {
             int destVal = dest->getValue();
             int srcVal;
 
-            if (useImmediate) {
-                srcVal = immediateValue;
-            } else {
-                srcVal = src->getValue();
-            }
+            if (useImmediate) srcVal = immediateValue;
+            else srcVal = src->getValue();
 
             // Actually perform ADD here
             int result = destVal + srcVal;
@@ -647,16 +638,6 @@ class AddInstruction : public ArithmeticInstruction {
             dest->setValue(result);
         }
 };
-
-// Run the cpu once all instruction are defined
-void CPU::run(Vector<Instruction*>& program) {
-    while (PC >= 0 && PC < program.size()) {
-        Instruction* currentInstruction = program[PC];
-        PC++; 
-        currentInstruction->execute(*this);
-        SI = stack.getTopIndex() + 1;
-    }
-}
 
 class InputInstruction : public Instruction {
     private:
@@ -678,7 +659,7 @@ class InputInstruction : public Instruction {
         InputInstruction(CPU& cpu, const std::string& regStr) : flags(cpu.getFlags()), reg(nullptr) {
             if (regStr.length() < 2 || regStr[0] != 'R') {
                 std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
-                throw InputInstruction::InvalidSyntaxException();
+                throw Instruction::InvalidSyntaxException();
             }
 
             try {
@@ -717,10 +698,17 @@ class InputInstruction : public Instruction {
                 if (value == 0) flags.setZF(true);
             }
         }
-
-        // Exception classes
-        class InvalidSyntaxException {}; 
 };
+
+// Run the cpu once all instruction are defined
+void CPU::run(Vector<Instruction*>& program) {
+    while (PC >= 0 && PC < program.size()) {
+        Instruction* currentInstruction = program[PC];
+        PC++; 
+        currentInstruction->execute(*this);
+        SI = stack.getTopIndex() + 1;
+    }
+}
 
 // ----- INTERPRETER -----
 class Runner {
@@ -804,7 +792,6 @@ class Runner {
             return nullptr; // No command found
         }
 };
-
 
 // ----- MAIN -----
 int main() {
