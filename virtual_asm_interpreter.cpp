@@ -682,10 +682,42 @@ class MulInstruction : public ArithmeticInstruction {
 
             // Change to unsigned for Carry Flag
             unsigned int unsignedResult = static_cast<unsigned int>(static_cast<unsigned char>(destVal)) * static_cast<unsigned int>(static_cast<unsigned char>(srcVal));
-            
             updateFlags(result, unsignedResult);
             dest->setValue(result);
         }
+};
+
+// DIV instruction
+class DivInstruction : public ArithmeticInstruction {
+    public:
+        DivInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
+
+        void execute(CPU& cpu) override {
+            if (!dest) return;
+
+            int destVal = dest->getValue();
+            int srcVal;
+
+            if (useImmediate) srcVal = immediateValue;
+            else srcVal = src->getValue();
+
+            // Checks for Division By 0 
+            if (srcVal == 0) {
+                std::cout << "ERROR: Division by zero\n\n";
+                throw DivisionByZeroException();
+            }
+
+            // Actually perform DIV here
+            int result = destVal / srcVal;
+
+            // Change to unsigned for Carry Flag
+            unsigned int unsignedResult = static_cast<unsigned int>(static_cast<unsigned char>(destVal)) / static_cast<unsigned int>(static_cast<unsigned char>(srcVal));
+            updateFlags(result, unsignedResult);
+            dest->setValue(result);
+        }
+
+        // Exception class for zero division
+        class DivisionByZeroException {};
 };
 
 class InputInstruction : public Instruction {
@@ -836,6 +868,7 @@ class Runner {
             if (line.rfind("ADD ", 0) == 0) return new AddInstruction(cpu, line.substr(4));
             if (line.rfind("SUB ", 0) == 0) return new SubInstruction(cpu, line.substr(4));
             if (line.rfind("MUL ", 0) == 0) return new MulInstruction(cpu, line.substr(4));
+            if (line.rfind("DIV ", 0) == 0) return new DivInstruction(cpu, line.substr(4));
             // Logic to parse "MOV R1, 5" or "ADD R3, R1"
             // Returns a pointer to a new Instruction subclass
             // Example: if (line == "MOV") return new MOVInstruction(...);
