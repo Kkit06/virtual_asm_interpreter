@@ -632,7 +632,7 @@ class AddInstruction : public ArithmeticInstruction {
             // Actually perform ADD here
             int result = destVal + srcVal;
 
-            // Change to unsigned for Carry Flow
+            // Change to unsigned for Carry Flag
             unsigned int unsignedResult = static_cast<unsigned char>(dest->getByte()) + static_cast<unsigned char>(srcVal);
             updateFlags(result, unsignedResult);
             dest->setValue(result);
@@ -656,8 +656,33 @@ class SubInstruction : public ArithmeticInstruction {
             // Actually perform SUB here
             int result = destVal - srcVal;
 
-            // Change to unsigned for Carry Flow
+            // Change to unsigned for Carry Flag
             unsigned int unsignedResult = static_cast<unsigned int>(static_cast<unsigned char>(destVal)) - static_cast<unsigned int>(static_cast<unsigned char>(srcVal));
+            updateFlags(result, unsignedResult);
+            dest->setValue(result);
+        }
+};
+
+// MUL instruction
+class MulInstruction : public ArithmeticInstruction {
+    public:
+        MulInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
+
+        void execute(CPU& cpu) override {
+            if (!dest) return;
+
+            int destVal = dest->getValue();
+            int srcVal;
+
+            if (useImmediate) srcVal = immediateValue;
+            else srcVal = src->getValue();
+
+            // Actually perform MUL here
+            int result = destVal * srcVal;
+
+            // Change to unsigned for Carry Flag
+            unsigned int unsignedResult = static_cast<unsigned int>(static_cast<unsigned char>(destVal)) * static_cast<unsigned int>(static_cast<unsigned char>(srcVal));
+            
             updateFlags(result, unsignedResult);
             dest->setValue(result);
         }
@@ -810,6 +835,7 @@ class Runner {
             if (line.rfind("INPUT ", 0) == 0) return new InputInstruction(cpu, line.substr(6));
             if (line.rfind("ADD ", 0) == 0) return new AddInstruction(cpu, line.substr(4));
             if (line.rfind("SUB ", 0) == 0) return new SubInstruction(cpu, line.substr(4));
+            if (line.rfind("MUL ", 0) == 0) return new MulInstruction(cpu, line.substr(4));
             // Logic to parse "MOV R1, 5" or "ADD R3, R1"
             // Returns a pointer to a new Instruction subclass
             // Example: if (line == "MOV") return new MOVInstruction(...);
