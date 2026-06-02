@@ -639,6 +639,30 @@ class AddInstruction : public ArithmeticInstruction {
         }
 };
 
+// SUB instruction
+class SubInstruction : public ArithmeticInstruction {
+    public:
+        SubInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
+
+        void execute(CPU& cpu) override {
+            if (!dest) return;
+
+            int destVal = dest->getValue();
+            int srcVal;
+
+            if (useImmediate) srcVal = immediateValue;
+            else srcVal = src->getValue();
+
+            // Actually perform SUB here
+            int result = destVal - srcVal;
+
+            // Change to unsigned for Carry Flow
+            unsigned int unsignedResult = static_cast<unsigned int>(static_cast<unsigned char>(destVal)) - static_cast<unsigned int>(static_cast<unsigned char>(srcVal));
+            updateFlags(result, unsignedResult);
+            dest->setValue(result);
+        }
+};
+
 class InputInstruction : public Instruction {
     private:
         GeneralRegister* reg;
@@ -785,6 +809,7 @@ class Runner {
         Instruction* decode(const std::string& line) {
             if (line.rfind("INPUT ", 0) == 0) return new InputInstruction(cpu, line.substr(6));
             if (line.rfind("ADD ", 0) == 0) return new AddInstruction(cpu, line.substr(4));
+            if (line.rfind("SUB ", 0) == 0) return new SubInstruction(cpu, line.substr(4));
             // Logic to parse "MOV R1, 5" or "ADD R3, R1"
             // Returns a pointer to a new Instruction subclass
             // Example: if (line == "MOV") return new MOVInstruction(...);
