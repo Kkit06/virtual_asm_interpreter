@@ -700,6 +700,46 @@ class InputInstruction : public Instruction {
         }
 };
 
+class DisplayInstruction : public Instruction {
+private:
+    GeneralRegister* reg;
+
+public:
+    DisplayInstruction(CPU& cpu, const std::string& regStr)
+        : reg(nullptr) {
+
+        if (regStr.length() < 2 || regStr[0] != 'R') {
+            std::cout << "ERROR: Syntax error at line "
+                      << cpu.getPC() << "\n\n";
+            throw Instruction::InvalidSyntaxException();
+        }
+
+        try {
+            int regId = std::stoi(regStr.substr(1));
+
+            if (regId >= 0 && regId < 8)
+                reg = &cpu.getRegister(regId);
+            else
+                throw CPU::RegisterOverflowException();
+
+        } catch (const CPU::RegisterOverflowException&) {
+            std::cout << "ERROR: Invalid register at line "
+                      << cpu.getPC() << "\n\n";
+            throw;
+        } catch (...) {
+            std::cout << "ERROR: Syntax error at line "
+                      << cpu.getPC() << "\n\n";
+            throw;
+        }
+    }
+
+    void execute(CPU& cpu) override {
+        if (!reg) return;
+
+        std::cout << reg->getValue() << std::endl;
+    }
+};
+
 // Run the cpu once all instruction are defined
 void CPU::run(Vector<Instruction*>& program) {
     while (PC >= 0 && PC < program.size()) {
@@ -785,6 +825,7 @@ class Runner {
         Instruction* decode(const std::string& line) {
             if (line.rfind("INPUT ", 0) == 0) return new InputInstruction(cpu, line.substr(6));
             if (line.rfind("ADD ", 0) == 0) return new AddInstruction(cpu, line.substr(4));
+            if (line.rfind("DISPLAY ", 0) == 0) return new DisplayInstruction(cpu, line.substr(8));
             // Logic to parse "MOV R1, 5" or "ADD R3, R1"
             // Returns a pointer to a new Instruction subclass
             // Example: if (line == "MOV") return new MOVInstruction(...);
