@@ -326,10 +326,10 @@ class Register {
         void setValue(int newValue) { value = static_cast<signed char>(newValue); }
 
         // Get register value in 8 bit binary
-        void getBinary(int bits[8]) const {
+        void getBinary(Queue<int> bits) const {
             unsigned char val = static_cast<unsigned char>(value);
-            for (int i = 0; i < 8; i++) {
-                bits[7 - i] = (val >> i) & 1; // Move and check if they are 1
+            for (int i = 7; i >= 0; i--) {
+                bits.enqueue((val >> i) & 1); 
             }
         }
 
