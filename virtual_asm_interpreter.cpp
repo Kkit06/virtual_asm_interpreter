@@ -615,7 +615,7 @@ class ArithmeticInstruction : public Instruction {
         }
 };
 
-// ADD instruction
+// ADD <Source Register>, <Value / Register>
 class AddInstruction : public ArithmeticInstruction {
     public:
         AddInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
@@ -632,13 +632,95 @@ class AddInstruction : public ArithmeticInstruction {
             // Actually perform ADD here
             int result = destVal + srcVal;
 
-            // Change to unsigned for Carry Flow
+            // Change to unsigned for Carry Flag
             unsigned int unsignedResult = static_cast<unsigned char>(dest->getByte()) + static_cast<unsigned char>(srcVal);
             updateFlags(result, unsignedResult);
             dest->setValue(result);
         }
 };
 
+// SUB <Source Register>, <Value / Register>
+class SubInstruction : public ArithmeticInstruction {
+    public:
+        SubInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
+
+        void execute(CPU& cpu) override {
+            if (!dest) return;
+
+            int destVal = dest->getValue();
+            int srcVal;
+
+            if (useImmediate) srcVal = immediateValue;
+            else srcVal = src->getValue();
+
+            // Actually perform SUB here
+            int result = destVal - srcVal;
+
+            // Change to unsigned for Carry Flag
+            unsigned int unsignedResult = static_cast<unsigned int>(static_cast<unsigned char>(destVal)) - static_cast<unsigned int>(static_cast<unsigned char>(srcVal));
+            updateFlags(result, unsignedResult);
+            dest->setValue(result);
+        }
+};
+
+// MUL <Source Register>, <Value / Register>
+class MulInstruction : public ArithmeticInstruction {
+    public:
+        MulInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
+
+        void execute(CPU& cpu) override {
+            if (!dest) return;
+
+            int destVal = dest->getValue();
+            int srcVal;
+
+            if (useImmediate) srcVal = immediateValue;
+            else srcVal = src->getValue();
+
+            // Actually perform MUL here
+            int result = destVal * srcVal;
+
+            // Change to unsigned for Carry Flag
+            unsigned int unsignedResult = static_cast<unsigned int>(static_cast<unsigned char>(destVal)) * static_cast<unsigned int>(static_cast<unsigned char>(srcVal));
+            updateFlags(result, unsignedResult);
+            dest->setValue(result);
+        }
+};
+
+// DIV <Source Register>, <Value / Register>
+class DivInstruction : public ArithmeticInstruction {
+    public:
+        DivInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
+
+        void execute(CPU& cpu) override {
+            if (!dest) return;
+
+            int destVal = dest->getValue();
+            int srcVal;
+
+            if (useImmediate) srcVal = immediateValue;
+            else srcVal = src->getValue();
+
+            // Checks for Division By 0 
+            if (srcVal == 0) {
+                std::cout << "ERROR: Division by zero\n\n";
+                throw DivisionByZeroException();
+            }
+
+            // Actually perform DIV here
+            int result = destVal / srcVal;
+
+            // Change to unsigned for Carry Flag
+            unsigned int unsignedResult = static_cast<unsigned int>(static_cast<unsigned char>(destVal)) / static_cast<unsigned int>(static_cast<unsigned char>(srcVal));
+            updateFlags(result, unsignedResult);
+            dest->setValue(result);
+        }
+
+        // Exception class for zero division
+        class DivisionByZeroException {};
+};
+
+// INPUT <Register>
 class InputInstruction : public Instruction {
     private:
         GeneralRegister* reg;
@@ -663,7 +745,13 @@ class InputInstruction : public Instruction {
             }
 
             try {
-                int regId = std::stoi(regStr.substr(1)); // Remove first character, convert to int
+                size_t processedChars = 0;
+                int regId = std::stoi(regStr.substr(1), &processedChars); // Get how many characters parsed from processedChars
+
+                if ((processedChars + 1) < regStr.length()) { // Check if processedChars is longer than 2 char
+                    std::string remainder = regStr.substr(processedChars + 1);
+                    if (remainder.find_first_not_of(" \t\r\n") != std::string::npos) throw Instruction::InvalidSyntaxException(); 
+                }
                 
                 if (regId >= 0 && regId < 8) reg = &cpu.getRegister(regId);
                 else throw CPU::RegisterOverflowException();
@@ -698,6 +786,46 @@ class InputInstruction : public Instruction {
                 if (value == 0) flags.setZF(true);
             }
         }
+};
+
+class DisplayInstruction : public Instruction {
+private:
+    GeneralRegister* reg;
+
+public:
+    DisplayInstruction(CPU& cpu, const std::string& regStr)
+        : reg(nullptr) {
+
+        if (regStr.length() < 2 || regStr[0] != 'R') {
+            std::cout << "ERROR: Syntax error at line "
+                      << cpu.getPC() << "\n\n";
+            throw Instruction::InvalidSyntaxException();
+        }
+
+        try {
+            int regId = std::stoi(regStr.substr(1));
+
+            if (regId >= 0 && regId < 8)
+                reg = &cpu.getRegister(regId);
+            else
+                throw CPU::RegisterOverflowException();
+
+        } catch (const CPU::RegisterOverflowException&) {
+            std::cout << "ERROR: Invalid register at line "
+                      << cpu.getPC() << "\n\n";
+            throw;
+        } catch (...) {
+            std::cout << "ERROR: Syntax error at line "
+                      << cpu.getPC() << "\n\n";
+            throw;
+        }
+    }
+
+    void execute(CPU& cpu) override {
+        if (!reg) return;
+
+        std::cout << reg->getValue() << std::endl;
+    }
 };
 
 class DisplayInstruction : public Instruction {
@@ -825,6 +953,9 @@ class Runner {
         Instruction* decode(const std::string& line) {
             if (line.rfind("INPUT ", 0) == 0) return new InputInstruction(cpu, line.substr(6));
             if (line.rfind("ADD ", 0) == 0) return new AddInstruction(cpu, line.substr(4));
+            if (line.rfind("SUB ", 0) == 0) return new SubInstruction(cpu, line.substr(4));
+            if (line.rfind("MUL ", 0) == 0) return new MulInstruction(cpu, line.substr(4));
+            if (line.rfind("DIV ", 0) == 0) return new DivInstruction(cpu, line.substr(4));
             if (line.rfind("DISPLAY ", 0) == 0) return new DisplayInstruction(cpu, line.substr(8));
             // Logic to parse "MOV R1, 5" or "ADD R3, R1"
             // Returns a pointer to a new Instruction subclass
