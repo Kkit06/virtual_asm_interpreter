@@ -615,7 +615,7 @@ class ArithmeticInstruction : public Instruction {
         }
 };
 
-// ADD instruction
+// ADD <Source Register>, <Value / Register>
 class AddInstruction : public ArithmeticInstruction {
     public:
         AddInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
@@ -639,7 +639,7 @@ class AddInstruction : public ArithmeticInstruction {
         }
 };
 
-// SUB instruction
+// SUB <Source Register>, <Value / Register>
 class SubInstruction : public ArithmeticInstruction {
     public:
         SubInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
@@ -663,7 +663,7 @@ class SubInstruction : public ArithmeticInstruction {
         }
 };
 
-// MUL instruction
+// MUL <Source Register>, <Value / Register>
 class MulInstruction : public ArithmeticInstruction {
     public:
         MulInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
@@ -687,7 +687,7 @@ class MulInstruction : public ArithmeticInstruction {
         }
 };
 
-// DIV instruction
+// DIV <Source Register>, <Value / Register>
 class DivInstruction : public ArithmeticInstruction {
     public:
         DivInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
@@ -720,6 +720,7 @@ class DivInstruction : public ArithmeticInstruction {
         class DivisionByZeroException {};
 };
 
+// INPUT <Register>
 class InputInstruction : public Instruction {
     private:
         GeneralRegister* reg;
@@ -744,7 +745,13 @@ class InputInstruction : public Instruction {
             }
 
             try {
-                int regId = std::stoi(regStr.substr(1)); // Remove first character, convert to int
+                size_t processedChars = 0;
+                int regId = std::stoi(regStr.substr(1), &processedChars); // Get how many characters parsed from processedChars
+
+                if ((processedChars + 1) < regStr.length()) { // Check if processedChars is longer than 2 char
+                    std::string remainder = regStr.substr(processedChars + 1);
+                    if (remainder.find_first_not_of(" \t\r\n") != std::string::npos) throw Instruction::InvalidSyntaxException(); 
+                }
                 
                 if (regId >= 0 && regId < 8) reg = &cpu.getRegister(regId);
                 else throw CPU::RegisterOverflowException();
