@@ -788,84 +788,40 @@ class InputInstruction : public Instruction {
         }
 };
 
+// DISPLAY <Register>
 class DisplayInstruction : public Instruction {
-private:
-    GeneralRegister* reg;
+    private:
+        GeneralRegister* reg;
 
-public:
-    DisplayInstruction(CPU& cpu, const std::string& regStr)
-        : reg(nullptr) {
+    public:
+        DisplayInstruction(CPU& cpu, const std::string& regStr)
+            : reg(nullptr) {
 
-        if (regStr.length() < 2 || regStr[0] != 'R') {
-            std::cout << "ERROR: Syntax error at line "
-                      << cpu.getPC() << "\n\n";
-            throw Instruction::InvalidSyntaxException();
+            if (regStr.length() < 2 || regStr[0] != 'R') {
+                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
+                throw Instruction::InvalidSyntaxException();
+            }
+
+            try {
+                int regId = std::stoi(regStr.substr(1));
+
+                if (regId >= 0 && regId < 8) reg = &cpu.getRegister(regId);
+                else throw CPU::RegisterOverflowException();
+
+            } catch (const CPU::RegisterOverflowException&) {
+                std::cout << "ERROR: Invalid register at line " << cpu.getPC() << "\n\n";
+                throw;
+            } catch (...) {
+                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
+                throw;
+            }
         }
 
-        try {
-            int regId = std::stoi(regStr.substr(1));
+        void execute(CPU& cpu) override {
+            if (!reg) return;
 
-            if (regId >= 0 && regId < 8)
-                reg = &cpu.getRegister(regId);
-            else
-                throw CPU::RegisterOverflowException();
-
-        } catch (const CPU::RegisterOverflowException&) {
-            std::cout << "ERROR: Invalid register at line "
-                      << cpu.getPC() << "\n\n";
-            throw;
-        } catch (...) {
-            std::cout << "ERROR: Syntax error at line "
-                      << cpu.getPC() << "\n\n";
-            throw;
+            std::cout << reg->getValue() << std::endl;
         }
-    }
-
-    void execute(CPU& cpu) override {
-        if (!reg) return;
-
-        std::cout << reg->getValue() << std::endl;
-    }
-};
-
-class DisplayInstruction : public Instruction {
-private:
-    GeneralRegister* reg;
-
-public:
-    DisplayInstruction(CPU& cpu, const std::string& regStr)
-        : reg(nullptr) {
-
-        if (regStr.length() < 2 || regStr[0] != 'R') {
-            std::cout << "ERROR: Syntax error at line "
-                      << cpu.getPC() << "\n\n";
-            throw Instruction::InvalidSyntaxException();
-        }
-
-        try {
-            int regId = std::stoi(regStr.substr(1));
-
-            if (regId >= 0 && regId < 8)
-                reg = &cpu.getRegister(regId);
-            else
-                throw CPU::RegisterOverflowException();
-
-        } catch (const CPU::RegisterOverflowException&) {
-            std::cout << "ERROR: Invalid register at line "
-                      << cpu.getPC() << "\n\n";
-            throw;
-        } catch (...) {
-            std::cout << "ERROR: Syntax error at line "
-                      << cpu.getPC() << "\n\n";
-            throw;
-        }
-    }
-
-    void execute(CPU& cpu) override {
-        if (!reg) return;
-
-        std::cout << reg->getValue() << std::endl;
-    }
 };
 
 // Run the cpu once all instruction are defined
