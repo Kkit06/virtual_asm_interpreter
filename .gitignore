@@ -46,3 +46,6 @@ main
 Thumbs.db
 desktop.ini
 ./vscode
+
+# ASM Code
+*.asm

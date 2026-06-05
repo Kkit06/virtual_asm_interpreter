@@ -2,6 +2,7 @@
 #include <iomanip>
 #include <string>
 #include <limits>
+#include <fstream>
 
 // ----- CUSTOM LIBRARY -----
 // Stack (Last In, First Out)
@@ -416,6 +417,13 @@ class Memory {
             data.replace(address, static_cast<signed char>(value));
         }
 
+        // Reset all memory slot to 0
+        void resetMemory() {
+            for (int i = 0; i < 64; i++) {
+                data[i] = 0;
+            }
+        }
+
         // Exception classes
         class IndexOutOfBoundsException {};
 };
@@ -446,6 +454,22 @@ class CPU {
         GeneralRegister& getRegister(int id) {
             if (id < 0 || id > 7) throw CPU::RegisterOverflowException();
             return registers[id];
+        }
+
+        void reset() {
+            for (GeneralRegister reg : registers) {
+                reg.setValue(0);
+            }
+
+            while (!stack.isEmpty()) {
+                signed char temp = stack.pop();
+            }
+
+            flags->resetFlags();
+            memory.resetMemory();
+
+            PC = 0;
+            SI = stack.getTopIndex() + 1;
         }
 
         // Display everything data store into the cpu
@@ -847,9 +871,15 @@ class Runner {
                 std::cout << "> ";
                 if (!std::getline(std::cin, input) || input == "exit") break;
 
-                if (input.find("run ") == 0)
-                    shouldDisplay = loadAndRunFile(input.substr(4));
-                else if (input.find("status") == 0)
+                std::string command = input;
+                size_t first = command.find_first_not_of(" \t\r\n");
+                if (first != std::string::npos) {
+                    command = command.substr(first);
+                }
+
+                if (command.find("run ") == 0)
+                    shouldDisplay = loadAndRunFile(command.substr(4));
+                else if (command.find("status") == 0)
                     cpu.display();
                 else
                     shouldDisplay = executeCommand(input);
@@ -889,19 +919,62 @@ class Runner {
 
         // Read entire file into a vecotr of instruction
         bool loadAndRunFile(const std::string& filename) {
-            // Reset cpu to 0 state
-            // Reads file into vector, ignores empty lines
-            // Updates PC from 0 to total instructions 
-            // Loop decode for every line and store it in a vector
-            // Run the vector
-            // Stop and clear the vector if catches a throw
-            
-            std::cout << "Sorry bang, not implemented yet\n";
+            std::ifstream file(filename);
+            if (!file.is_open()) {
+                std::cout << "ERROR: Could not open file: " << filename << "\n\n";
+                return false;
+            }
 
-            // Wrap cpu.run in a try-catch.
-            // Return true if it completes, false if a throw is caught.
-            return false;
+            Vector<Instruction*> program;
+            std::string line;
+            int lineNumber = 0;
+
+            try {
+                while (std::getline(file, line)) {
+                    lineNumber++;
+
+                    size_t start = line.find_first_not_of(" \t\r\n");
+                    if (start == std::string::npos) continue; // Skip empty/blank lines
+                    size_t end = line.find_last_not_of(" \t\r\n");
+                    std::string cleanedLine = line.substr(start, end - start + 1);
+
+                    // Decode the cleaned line
+                    Instruction* instr = decode(cleanedLine);
+                    if (!instr) throw Runner::UnknownSyntaxException();
+                    
+                    program.push_back(instr);
+                }
+
+                if (program.isEmpty()) {
+                    std::cout << "WARNING: File is empty.\n\n";
+                    return false;
+                }
+
+                // Reset CPU and run the intructions
+                cpu.reset();
+                cpu.run(program);
+
+                for (int i = 0; i < program.size(); ++i) {
+                    delete program[i];
+                }
+                return true;
+            }
+            catch (const Runner::UnknownSyntaxException&) {
+                std::cout << "ERROR: Unknown syntax at line" << lineNumber << "\n\n";
+                for (int i = 0; i < program.size(); ++i) {
+                    delete program[i];
+                }
+                return false;
+            }
+            catch (...) {
+                for (int i = 0; i < program.size(); ++i) {
+                    delete program[i];
+                }
+                return false;
+            }
         }
+
+        class UnknownSyntaxException {}; 
 
     private:
         CPU& cpu;       // Refrence to CPU in the program
