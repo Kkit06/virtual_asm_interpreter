@@ -457,7 +457,7 @@ class CPU {
         }
 
         void reset() {
-            for (GeneralRegister reg : registers) {
+            for (GeneralRegister& reg : registers) {
                 reg.setValue(0);
             }
 
@@ -628,12 +628,7 @@ class ArithmeticInstruction : public Instruction {
                     immediateValue = std::stoi(srcStr);
                     useImmediate = true;
                 }
-                
-            } catch (const CPU::RegisterOverflowException&) {
-                std::cout << "ERROR: Invalid register at line " << cpu.getPC() << "\n\n";
-                throw;
             } catch (...) {
-                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
                 throw;
             }
         }
@@ -763,10 +758,7 @@ class InputInstruction : public Instruction {
 
     public:
         InputInstruction(CPU& cpu, const std::string& regStr) : flags(cpu.getFlags()), reg(nullptr) {
-            if (regStr.length() < 2 || regStr[0] != 'R') {
-                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
-                throw Instruction::InvalidSyntaxException();
-            }
+            if (regStr.length() < 2 || regStr[0] != 'R') throw Instruction::InvalidSyntaxException();
 
             try {
                 size_t processedChars = 0;
@@ -779,11 +771,7 @@ class InputInstruction : public Instruction {
                 
                 if (regId >= 0 && regId < 8) reg = &cpu.getRegister(regId);
                 else throw CPU::RegisterOverflowException();
-            } catch (const CPU::RegisterOverflowException&) {
-                std::cout << "ERROR: Invalid register at line " << cpu.getPC() << "\n\n";
-                throw;
             } catch (...) {
-                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
                 throw;
             }
         }
@@ -821,22 +809,14 @@ class DisplayInstruction : public Instruction {
         DisplayInstruction(CPU& cpu, const std::string& regStr)
             : reg(nullptr) {
 
-            if (regStr.length() < 2 || regStr[0] != 'R') {
-                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
-                throw Instruction::InvalidSyntaxException();
-            }
+            if (regStr.length() < 2 || regStr[0] != 'R') throw Instruction::InvalidSyntaxException();
 
             try {
                 int regId = std::stoi(regStr.substr(1));
 
                 if (regId >= 0 && regId < 8) reg = &cpu.getRegister(regId);
                 else throw CPU::RegisterOverflowException();
-
-            } catch (const CPU::RegisterOverflowException&) {
-                std::cout << "ERROR: Invalid register at line " << cpu.getPC() << "\n\n";
-                throw;
             } catch (...) {
-                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
                 throw;
             }
         }
@@ -881,6 +861,10 @@ class Runner {
                     shouldDisplay = loadAndRunFile(command.substr(4));
                 else if (command.find("status") == 0)
                     cpu.display();
+                else if (command.find("reset") == 0) {
+                    cpu.reset();
+                    shouldDisplay = true;
+                }
                 else
                     shouldDisplay = executeCommand(input);
 
@@ -921,7 +905,7 @@ class Runner {
         bool loadAndRunFile(const std::string& filename) {
             std::ifstream file(filename);
             if (!file.is_open()) {
-                std::cout << "ERROR: Could not open file: " << filename << "\n\n";
+                std::cout << "ERROR: Could not open file '" << filename << "'\n\n";
                 return false;
             }
 
@@ -938,11 +922,21 @@ class Runner {
                     size_t end = line.find_last_not_of(" \t\r\n");
                     std::string cleanedLine = line.substr(start, end - start + 1);
 
-                    // Decode the cleaned line
-                    Instruction* instr = decode(cleanedLine);
-                    if (!instr) throw Runner::UnknownSyntaxException();
-                    
-                    program.push_back(instr);
+                    try {
+                        // Decode the cleaned line
+                        Instruction* instr = decode(cleanedLine);
+                        if (!instr) throw Runner::UnknownSyntaxException();
+
+                        program.push_back(instr);
+                    } 
+                    catch (const CPU::RegisterOverflowException&) {
+                        std::cout << "ERROR: Invalid register at line " << lineNumber << "\n\n";
+                        throw;
+                    }
+                    catch (...) {
+                        std::cout << "ERROR: Syntax error at line " << lineNumber << "\n\n";
+                        throw; 
+                    }
                 }
 
                 if (program.isEmpty()) {
@@ -958,13 +952,6 @@ class Runner {
                     delete program[i];
                 }
                 return true;
-            }
-            catch (const Runner::UnknownSyntaxException&) {
-                std::cout << "ERROR: Unknown syntax at line" << lineNumber << "\n\n";
-                for (int i = 0; i < program.size(); ++i) {
-                    delete program[i];
-                }
-                return false;
             }
             catch (...) {
                 for (int i = 0; i < program.size(); ++i) {
