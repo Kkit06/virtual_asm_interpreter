@@ -2,6 +2,24 @@
 #include <iomanip>
 #include <string>
 #include <limits>
+#include <fstream>
+
+// ----- EXCEPTION CLASSES -----
+struct Errors {
+    // Library Errors
+    class StackOverflowException {};        // Inserting data into a full stack
+    class UnderflowException {};            // Popping a empty stacks/queue
+    class MaxCapacityException {};          // Vector/Queue is too big to resize
+    class IndexOutOfBoundsException {};     // Accessing a index out of bounds
+    class NegativeSizeException {};         // Creating vector with negative size 
+
+    // CPU Errors
+    class RegisterOutOfBoundsException {};  // Accessing a register out of bounds
+
+    // Instruction Errors
+    class InvalidSyntaxException {};        // Invalid syntax
+    class DivisionByZeroException {};       // Attempt to divide by 0
+};
 
 // ----- CUSTOM LIBRARY -----
 // Stack (Last In, First Out)
@@ -20,13 +38,13 @@ class Stack {
 
         // Stores value into the stack
         void push(const T& value) {
-            if (topIndex >= static_cast<int>(capacity) - 1) throw OverflowException();
+            if (topIndex >= static_cast<int>(capacity) - 1) throw Errors::StackOverflowException();
             data[++topIndex] = value;
         }
 
         // Return top value, then remove them
         T pop() {
-            if (isEmpty()) throw UnderflowException();
+            if (isEmpty()) throw Errors::UnderflowException();
             return data[topIndex--];
         }
 
@@ -71,10 +89,6 @@ class Stack {
         Stack(const Stack& other) = delete;
         Stack& operator=(const Stack& other) = delete;
 
-        // Exception classes
-        class OverflowException {}; 
-        class UnderflowException {};
-
     private:
         T* data;            // Pointer to stack array
         size_t capacity;    // Maximum size of the stack array
@@ -86,13 +100,13 @@ template <typename T>
 class Vector {
     public:
         Vector(int initialCapacity = 4) : currentSize(0), capacity(initialCapacity) {
-            if (capacity < 1) throw NegativeSizeException();
+            if (capacity < 1) throw Errors::NegativeSizeException();
             data = new T[capacity];
         }
 
         // Constructor for pre-filling the vector
         Vector(int size, const T& defaultValue) : currentSize(size), capacity(size) {
-            if (size < 0) throw NegativeSizeException();
+            if (size < 0) throw Errors::NegativeSizeException();
             data = new T[capacity];
             
             for (size_t i = 0; i < currentSize; i++) {
@@ -112,13 +126,13 @@ class Vector {
 
         // Remove last element, data will not be deleted but replaced in the future
         void pop_back() {
-            if (isEmpty()) throw IndexOutOfBoundsException();
+            if (isEmpty()) throw Errors::IndexOutOfBoundsException();
             currentSize--;
         }
 
         // Insert a value into a certain position
         void insert(int index, const T& value) {
-            if (index < 0 || index > currentSize) throw IndexOutOfBoundsException();
+            if (index < 0 || index > currentSize) throw Errors::IndexOutOfBoundsException();
             if (currentSize == capacity) resize();
 
             // Shift elements to the right to make a hole
@@ -132,7 +146,7 @@ class Vector {
 
         // Remove the value at index and shift right position to left
         void remove(int index) {
-            if (index < 0 || index >= currentSize || currentSize == 0) throw IndexOutOfBoundsException();
+            if (index < 0 || index >= currentSize || currentSize == 0) throw Errors::IndexOutOfBoundsException();
 
             // Shift elements to the left to fill the gap
             for (size_t i = index; i < currentSize - 1; i++) {
@@ -144,19 +158,19 @@ class Vector {
 
         // Replace value at index with new value
         void replace(int index, const T& value) {
-            if (index < 0 || index >= currentSize) throw IndexOutOfBoundsException();
+            if (index < 0 || index >= currentSize) throw Errors::IndexOutOfBoundsException();
             data[index] = value;
         }
 
         // Overload operator [], when trying to access an invalid/out of bounds index, throws error
         T& operator[](int index) {
-            if (index < 0 || index >= currentSize) throw IndexOutOfBoundsException();
+            if (index < 0 || index >= currentSize) throw Errors::IndexOutOfBoundsException();
             return data[index];
         }
 
         // Const for reading a vector
         const T& operator[](int index) const {
-            if (index < 0 || index >= currentSize) throw IndexOutOfBoundsException();
+            if (index < 0 || index >= currentSize) throw Errors::IndexOutOfBoundsException();
             return data[index];
         }
 
@@ -199,11 +213,6 @@ class Vector {
         Vector(const Vector& other) = delete;
         Vector& operator=(const Vector& other) = delete;
 
-        // Exception classes
-        class IndexOutOfBoundsException {};
-        class NegativeSizeException {};
-        class OverflowException {};
-
     private:
         T* data;                // Pointer to the dynamic array
         size_t currentSize;     // Number of elements currently in the vector
@@ -219,7 +228,7 @@ class Vector {
 
         // Called when array is full to double the size
         void resize() {
-            if (capacity > 1073741823) throw OverflowException();
+            if (capacity > 1073741823) throw Errors::MaxCapacityException();
 
             size_t newCapacity = (capacity == 0) ? 1 : capacity * 2;
             T* newData = new T[newCapacity];
@@ -251,7 +260,7 @@ class Queue {
 
         // Remove data into queue
         T dequeue() {
-            if (isEmpty()) throw EmptyQueueException();
+            if (isEmpty()) throw Errors::UnderflowException();
 
             T value = data[head];
             head = (head + 1) % capacity; // Wrap around if reach end
@@ -279,10 +288,6 @@ class Queue {
         Queue(const Queue& other) = delete;
         Queue& operator=(const Queue& other) = delete;
 
-        // Exception classes
-        class EmptyQueueException {};
-        class OverflowException {};
-
     private:
         Vector<T> data;     // Vector to store the queue
         int head;           // Index of the front element
@@ -291,7 +296,7 @@ class Queue {
         int capacity;       // Total space currently allocated
 
         void resize() {
-            if (capacity > 1073741823) throw OverflowException();
+            if (capacity > 1073741823) throw Errors::MaxCapacityException();
 
             int newCapacity = capacity * 2;
             Vector<T> newData(newCapacity, T());
@@ -394,30 +399,34 @@ class Memory {
 
         // Get the address byte
         signed char getByte(int address) const {
-            if (address < 0 || address >= 64) throw IndexOutOfBoundsException();
+            if (address < 0 || address >= 64) throw Errors::IndexOutOfBoundsException();
             return data[address];
         }
 
         // Get the address value
         int getValue(int address) const {
-            if (address < 0 || address >= 64) throw IndexOutOfBoundsException();
+            if (address < 0 || address >= 64) throw Errors::IndexOutOfBoundsException();
             return static_cast<int>(data[address]);
         }
 
         // Sets signed char at address when it is valid
         void setByte(int address, signed char value) {
-            if (address < 0 || address >= 64) throw IndexOutOfBoundsException();
+            if (address < 0 || address >= 64) throw Errors::IndexOutOfBoundsException();
             data.replace(address, value);
         }
 
         // Sets int at address when it is valid
         void setValue(int address, int value) {
-            if (address < 0 || address >= 64) throw IndexOutOfBoundsException();
+            if (address < 0 || address >= 64) throw Errors::IndexOutOfBoundsException();
             data.replace(address, static_cast<signed char>(value));
         }
 
-        // Exception classes
-        class IndexOutOfBoundsException {};
+        // Reset all memory slot to 0
+        void resetMemory() {
+            for (int i = 0; i < 64; i++) {
+                data[i] = 0;
+            }
+        }
 };
 
 // CPU
@@ -444,8 +453,24 @@ class CPU {
                       GeneralRegister(4), GeneralRegister(5), GeneralRegister(6), GeneralRegister(7)} {}
 
         GeneralRegister& getRegister(int id) {
-            if (id < 0 || id > 7) throw CPU::RegisterOverflowException();
+            if (id < 0 || id > 7) throw Errors::RegisterOutOfBoundsException();
             return registers[id];
+        }
+
+        void reset() {
+            for (GeneralRegister& reg : registers) {
+                reg.setValue(0);
+            }
+
+            while (!stack.isEmpty()) {
+                signed char temp = stack.pop();
+            }
+
+            flags->resetFlags();
+            memory.resetMemory();
+
+            PC = 0;
+            SI = stack.getTopIndex() + 1;
         }
 
         // Display everything data store into the cpu
@@ -484,7 +509,7 @@ class CPU {
             try {
                 return stack.pop(); 
             } 
-            catch (const Stack<signed char, 8>::UnderflowException&) {
+            catch (const Errors::UnderflowException&) {
                 std::cout << "ERROR: Stack is empty.\n\n";
                 throw;
             }
@@ -494,7 +519,7 @@ class CPU {
             try {
                 return static_cast<int>(stack.pop()); 
             } 
-            catch (const Stack<signed char, 8>::UnderflowException&) {
+            catch (const Errors::UnderflowException&) {
                 std::cout << "ERROR: Stack is empty.\n\n";
                 throw;
             }
@@ -505,7 +530,7 @@ class CPU {
             try {
                 stack.push(value); 
             } 
-            catch (const Stack<signed char, 8>::OverflowException&) {
+            catch (const Errors::StackOverflowException&) {
                 std::cout << "ERROR: Stack Overflow.\n\n";
                 throw;
             }
@@ -526,9 +551,6 @@ class CPU {
         FlagRegister& getFlags() { return *flags; }
 
         void run(Vector<Instruction*>& program);
-
-        // Exception classes
-        class RegisterOverflowException {}; 
 };
 
 // ----- INSTRUCTIONS -----
@@ -540,9 +562,6 @@ class Instruction {
 
         // Clean up all children instructions
         virtual ~Instruction() {}
-
-        // Exception classes
-        class InvalidSyntaxException {}; 
 };
 
 // ----- ARITHMETIC -----
@@ -568,14 +587,14 @@ class ArithmeticInstruction : public Instruction {
 
         size_t findChar(CPU& cpu, const std::string& word, char charToFind) {
             size_t character = word.find(charToFind);
-            if (character == std::string::npos) throw Instruction::InvalidSyntaxException();
+            if (character == std::string::npos) throw Errors::InvalidSyntaxException();
 
             return character;
         }
 
         GeneralRegister* findRegister(CPU& cpu, std::string str, size_t pos) {
             int id = std::stoi(str.substr(pos + 1));
-            if (id < 0 || id >= 8) throw CPU::RegisterOverflowException();
+            if (id < 0 || id >= 8) throw Errors::RegisterOutOfBoundsException();
 
             return &cpu.getRegister(id);
         }
@@ -604,12 +623,7 @@ class ArithmeticInstruction : public Instruction {
                     immediateValue = std::stoi(srcStr);
                     useImmediate = true;
                 }
-                
-            } catch (const CPU::RegisterOverflowException&) {
-                std::cout << "ERROR: Invalid register at line " << cpu.getPC() << "\n\n";
-                throw;
             } catch (...) {
-                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
                 throw;
             }
         }
@@ -704,7 +718,7 @@ class DivInstruction : public ArithmeticInstruction {
             // Checks for Division By 0 
             if (srcVal == 0) {
                 std::cout << "ERROR: Division by zero\n\n";
-                throw DivisionByZeroException();
+                throw Errors::DivisionByZeroException();
             }
 
             // Actually perform DIV here
@@ -715,9 +729,6 @@ class DivInstruction : public ArithmeticInstruction {
             updateFlags(result, unsignedResult);
             dest->setValue(result);
         }
-
-        // Exception class for zero division
-        class DivisionByZeroException {};
 };
 
 // INPUT <Register>
@@ -739,10 +750,7 @@ class InputInstruction : public Instruction {
 
     public:
         InputInstruction(CPU& cpu, const std::string& regStr) : flags(cpu.getFlags()), reg(nullptr) {
-            if (regStr.length() < 2 || regStr[0] != 'R') {
-                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
-                throw Instruction::InvalidSyntaxException();
-            }
+            if (regStr.length() < 2 || regStr[0] != 'R') throw Errors::InvalidSyntaxException();
 
             try {
                 size_t processedChars = 0;
@@ -750,16 +758,12 @@ class InputInstruction : public Instruction {
 
                 if ((processedChars + 1) < regStr.length()) { // Check if processedChars is longer than 2 char
                     std::string remainder = regStr.substr(processedChars + 1);
-                    if (remainder.find_first_not_of(" \t\r\n") != std::string::npos) throw Instruction::InvalidSyntaxException(); 
+                    if (remainder.find_first_not_of(" \t\r\n") != std::string::npos) throw Errors::InvalidSyntaxException(); 
                 }
                 
                 if (regId >= 0 && regId < 8) reg = &cpu.getRegister(regId);
-                else throw CPU::RegisterOverflowException();
-            } catch (const CPU::RegisterOverflowException&) {
-                std::cout << "ERROR: Invalid register at line " << cpu.getPC() << "\n\n";
-                throw;
+                else throw Errors::RegisterOutOfBoundsException();
             } catch (...) {
-                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
                 throw;
             }
         }
@@ -797,22 +801,14 @@ class DisplayInstruction : public Instruction {
         DisplayInstruction(CPU& cpu, const std::string& regStr)
             : reg(nullptr) {
 
-            if (regStr.length() < 2 || regStr[0] != 'R') {
-                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
-                throw Instruction::InvalidSyntaxException();
-            }
+            if (regStr.length() < 2 || regStr[0] != 'R') throw Errors::InvalidSyntaxException();
 
             try {
                 int regId = std::stoi(regStr.substr(1));
 
                 if (regId >= 0 && regId < 8) reg = &cpu.getRegister(regId);
-                else throw CPU::RegisterOverflowException();
-
-            } catch (const CPU::RegisterOverflowException&) {
-                std::cout << "ERROR: Invalid register at line " << cpu.getPC() << "\n\n";
-                throw;
+                else throw Errors::RegisterOutOfBoundsException();
             } catch (...) {
-                std::cout << "ERROR: Syntax error at line " << cpu.getPC() << "\n\n";
                 throw;
             }
         }
@@ -847,10 +843,20 @@ class Runner {
                 std::cout << "> ";
                 if (!std::getline(std::cin, input) || input == "exit") break;
 
-                if (input.find("run ") == 0)
-                    shouldDisplay = loadAndRunFile(input.substr(4));
-                else if (input.find("status") == 0)
+                std::string command = input;
+                size_t first = command.find_first_not_of(" \t\r\n");
+                if (first != std::string::npos) {
+                    command = command.substr(first);
+                }
+
+                if (command.find("run ") == 0)
+                    shouldDisplay = loadAndRunFile(command.substr(4));
+                else if (command.find("status") == 0)
                     cpu.display();
+                else if (command.find("reset") == 0) {
+                    cpu.reset();
+                    shouldDisplay = true;
+                }
                 else
                     shouldDisplay = executeCommand(input);
 
@@ -881,6 +887,11 @@ class Runner {
                     return false;
                 }
             }
+            catch (const Errors::RegisterOutOfBoundsException&) {
+                std::cout << "ERROR: Invalid register\n\n";
+                if (instr) delete instr;    // Free allocation
+                return false;
+            }
             catch (...) {
                 if (instr) delete instr;    // Free allocation
                 return false;
@@ -889,18 +900,38 @@ class Runner {
 
         // Read entire file into a vecotr of instruction
         bool loadAndRunFile(const std::string& filename) {
-            // Reset cpu to 0 state
-            // Reads file into vector, ignores empty lines
-            // Updates PC from 0 to total instructions 
-            // Loop decode for every line and store it in a vector
-            // Run the vector
-            // Stop and clear the vector if catches a throw
-            
-            std::cout << "Sorry bang, not implemented yet\n";
+            std::ifstream file(filename);
+            if (!file.is_open()) {
+                std::cout << "ERROR: Could not open file '" << filename << "'\n\n";
+                return false;
+            }
 
-            // Wrap cpu.run in a try-catch.
-            // Return true if it completes, false if a throw is caught.
-            return false;
+            Vector<Instruction*> program;
+            std::string line;
+            int lineNumber = 0;
+
+            try {
+                while (std::getline(file, line)) {
+                    lineNumber++;
+                    fileDecode(program, line, lineNumber);
+                }
+
+                if (program.isEmpty()) {
+                    std::cout << "WARNING: File is empty.\n\n";
+                    return false;
+                }
+
+                // Reset CPU and run the intructions
+                cpu.reset();
+                cpu.run(program);
+
+                cleanup(program);
+                return true;
+            }
+            catch (...) {
+                cleanup(program);
+                return false;
+            }
         }
 
     private:
@@ -918,6 +949,35 @@ class Runner {
             // Example: if (line == "MOV") return new MOVInstruction(...);
 
             return nullptr; // No command found
+        }
+
+        void fileDecode(Vector<Instruction*>& program, std::string& line, int& lineNumber) {
+            size_t start = line.find_first_not_of(" \t\r\n");
+            if (start == std::string::npos) return; // Skip empty/blank lines
+            size_t end = line.find_last_not_of(" \t\r\n");
+            std::string cleanedLine = line.substr(start, end - start + 1);
+
+            try {
+                // Decode the cleaned line
+                Instruction* instr = decode(cleanedLine);
+                if (!instr) throw Errors::InvalidSyntaxException();
+
+                program.push_back(instr);
+            } 
+            catch (const Errors::RegisterOutOfBoundsException&) {
+                std::cout << "ERROR: Invalid register at line " << lineNumber << "\n\n";
+                throw;
+            }
+            catch (const Errors::InvalidSyntaxException&) {
+                std::cout << "ERROR: Syntax error at line " << lineNumber << "\n\n";
+                throw; 
+            }
+        }
+
+        void cleanup(Vector<Instruction*>& program) {
+            for (int i = 0; i < program.size(); ++i) {
+                delete program[i];
+            }
         }
 };
 
