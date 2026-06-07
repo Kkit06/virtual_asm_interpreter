@@ -820,6 +820,47 @@ class DisplayInstruction : public Instruction {
         }
 };
 
+// ----- ROTATE -----
+class RotateInstruction : public Instruction {
+protected:
+    GeneralRegister* dest;
+    int count;
+
+public:
+    RotateInstruction(CPU& cpu, const char args[]) {
+        int r = args[1] - '0';     
+        dest = &cpu.getRegister(r);
+
+        count = args[3] - '0';
+        count &= 7; 
+    }
+};
+//ROL Instruction
+class RolInstruction : public RotateInstruction {
+public:
+    RolInstruction(CPU& cpu, const char args[])
+        : RotateInstruction(cpu, args) {}
+
+    void execute(CPU&) override {// Rotate left by count bits
+        unsigned char v = dest->getByte();
+        v = (v << count) | (v >> (8 - count));
+        dest->setByte((signed char)v);
+    }
+};
+// ROR Instruction
+class RorInstruction : public RotateInstruction {
+public:
+    RorInstruction(CPU& cpu, const char args[])
+        : RotateInstruction(cpu, args) {}
+
+    void execute(CPU&) override {// Rotate right by count bits
+        unsigned char v = dest->getByte();
+        v = (v >> count) | (v << (8 - count));
+        dest->setByte((signed char)v);
+    }
+};
+
+
 // Run the cpu once all instruction are defined
 void CPU::run(Vector<Instruction*>& program) {
     while (PC >= 0 && PC < program.size()) {
