@@ -820,46 +820,47 @@ class DisplayInstruction : public Instruction {
         }
 };
 
-// ----- ROTATE -----
+// Rotate Intermediate Class (ROL, ROR)
 class RotateInstruction : public Instruction {
-protected:
-    GeneralRegister* dest;
-    int count;
+    protected:
+        GeneralRegister* dest;
+        int count;
 
-public:
-    RotateInstruction(CPU& cpu, const char args[]) {
-        int r = args[1] - '0';     
-        dest = &cpu.getRegister(r);
+    public:
+        RotateInstruction(CPU& cpu, const char args[]) {
+            int r = args[1] - '0';     
+            dest = &cpu.getRegister(r);
 
-        count = args[3] - '0';
-        count &= 7; 
-    }
+            count = args[3] - '0';
+            count &= 7; 
+        }
 };
-//ROL Instruction
+
+// ROL <DestinationRegister> , <count>
 class RolInstruction : public RotateInstruction {
-public:
-    RolInstruction(CPU& cpu, const char args[])
-        : RotateInstruction(cpu, args) {}
+    public:
+        RolInstruction(CPU& cpu, const char args[])
+            : RotateInstruction(cpu, args) {}
 
-    void execute(CPU&) override {// Rotate left by count bits
-        unsigned char v = dest->getByte();
-        v = (v << count) | (v >> (8 - count));
-        dest->setByte((signed char)v);
-    }
+        void execute(CPU&) override {   // Rotate left by count bits
+            unsigned char v = dest->getByte();
+            v = (v << count) | (v >> (8 - count));
+            dest->setByte((signed char)v);
+        }
 };
-// ROR Instruction
+
+// ROR <DestinationRegister> , <count>
 class RorInstruction : public RotateInstruction {
-public:
-    RorInstruction(CPU& cpu, const char args[])
-        : RotateInstruction(cpu, args) {}
+    public:
+        RorInstruction(CPU& cpu, const char args[])
+            : RotateInstruction(cpu, args) {}
 
-    void execute(CPU&) override {// Rotate right by count bits
-        unsigned char v = dest->getByte();
-        v = (v >> count) | (v << (8 - count));
-        dest->setByte((signed char)v);
-    }
+        void execute(CPU&) override {   // Rotate right by count bits
+            unsigned char v = dest->getByte();
+            v = (v >> count) | (v << (8 - count));
+            dest->setByte((signed char)v);
+        }
 };
-
 
 // Run the cpu once all instruction are defined
 void CPU::run(Vector<Instruction*>& program) {
@@ -985,9 +986,6 @@ class Runner {
             if (line.rfind("MUL ", 0) == 0) return new MulInstruction(cpu, line.substr(4));
             if (line.rfind("DIV ", 0) == 0) return new DivInstruction(cpu, line.substr(4));
             if (line.rfind("DISPLAY ", 0) == 0) return new DisplayInstruction(cpu, line.substr(8));
-            // Logic to parse "MOV R1, 5" or "ADD R3, R1"
-            // Returns a pointer to a new Instruction subclass
-            // Example: if (line == "MOV") return new MOVInstruction(...);
 
             return nullptr; // No command found
         }
