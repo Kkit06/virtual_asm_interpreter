@@ -826,39 +826,69 @@ class RotateInstruction : public Instruction {
         GeneralRegister* dest;
         int count;
 
-    public:
-        RotateInstruction(CPU& cpu, const char args[]) {
-            int r = args[1] - '0';     
-            dest = &cpu.getRegister(r);
+        size_t findChar(CPU& cpu, const std::string& word, char charToFind) {
+            size_t character = word.find(charToFind);
+            if (character == std::string::npos) throw Errors::InvalidSyntaxException();
 
-            count = args[3] - '0';
-            count &= 7; 
+            return character;
+        }
+
+        GeneralRegister* findRegister(CPU& cpu, std::string str, size_t pos) {
+            int id = std::stoi(str.substr(pos + 1));
+            if (id < 0 || id >= 8) throw Errors::RegisterOutOfBoundsException();
+
+            return &cpu.getRegister(id);
+        }
+
+    public:
+        RotateInstruction(CPU& cpu, const std::string& args) {
+            try {
+                // Find "," from command
+                size_t commaPos = findChar(cpu, args, ',');
+
+                // Grab destination register and count
+                std::string destStr = args.substr(0, commaPos);
+                std::string countStr = args.substr(commaPos + 1);
+
+                // Find "R" from destination register
+                size_t destR = findChar(cpu, destStr, 'R');
+                dest = findRegister(cpu, destStr,destR);
+
+                // Get count
+                count = std::stoi(countStr);
+            } catch (...) {
+                throw;
+            }
         }
 };
 
 // ROL <DestinationRegister> , <count>
 class RolInstruction : public RotateInstruction {
     public:
-        RolInstruction(CPU& cpu, const char args[])
+        RolInstruction(CPU& cpu, const std::string& args)
             : RotateInstruction(cpu, args) {}
 
-        void execute(CPU&) override {   // Rotate left by count bits
-            unsigned char v = dest->getByte();
-            v = (v << count) | (v >> (8 - count));
-            dest->setByte((signed char)v);
+        void execute(CPU&) override {   
+            unsigned char v = static_cast<unsigned char>(dest->getByte());
+            int shift = count % 8; // Optimized to avoid unnecessary rotations
+            unsigned char rotated = ((v << shift) & 0xFF) | (v >> (8 - shift));
+
+            dest->setByte(static_cast<signed char>(rotated));
         }
 };
 
 // ROR <DestinationRegister> , <count>
 class RorInstruction : public RotateInstruction {
     public:
-        RorInstruction(CPU& cpu, const char args[])
+        RorInstruction(CPU& cpu, const std::string& args)
             : RotateInstruction(cpu, args) {}
 
-        void execute(CPU&) override {   // Rotate right by count bits
-            unsigned char v = dest->getByte();
-            v = (v >> count) | (v << (8 - count));
-            dest->setByte((signed char)v);
+        void execute(CPU&) override {   
+            unsigned char v = static_cast<unsigned char>(dest->getByte());
+            int shift = count % 8;  // Optimized to avoid unnecessary rotations
+            unsigned char rotated = (v >> shift) | ((v << (8 - shift)) & 0xFF);
+            
+            dest->setByte(static_cast<signed char>(rotated));
         }
 };
 
@@ -986,6 +1016,8 @@ class Runner {
             if (line.rfind("MUL ", 0) == 0) return new MulInstruction(cpu, line.substr(4));
             if (line.rfind("DIV ", 0) == 0) return new DivInstruction(cpu, line.substr(4));
             if (line.rfind("DISPLAY ", 0) == 0) return new DisplayInstruction(cpu, line.substr(8));
+            if (line.rfind("ROL ", 0) == 0) return new RolInstruction(cpu, line.substr(4));
+            if (line.rfind("ROR ", 0) == 0) return new RorInstruction(cpu, line.substr(4));
 
             return nullptr; // No command found
         }
