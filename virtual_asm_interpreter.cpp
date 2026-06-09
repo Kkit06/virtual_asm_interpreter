@@ -562,6 +562,21 @@ class Instruction {
 
         // Clean up all children instructions
         virtual ~Instruction() {}
+
+    protected:
+        size_t findChar(CPU& cpu, const std::string& word, char charToFind) {
+            size_t character = word.find(charToFind);
+            if (character == std::string::npos) throw Errors::InvalidSyntaxException();
+
+            return character;
+        }
+
+        GeneralRegister* findRegister(CPU& cpu, std::string str, size_t pos) {
+            int id = std::stoi(str.substr(pos + 1));
+            if (id < 0 || id >= 8) throw Errors::RegisterOutOfBoundsException();
+
+            return &cpu.getRegister(id);
+        }
 };
 
 // ----- ARITHMETIC -----
@@ -585,40 +600,26 @@ class ArithmeticInstruction : public Instruction {
             flags.setZF(static_cast<signed char>(result) == 0);
         }
 
-        size_t findChar(CPU& cpu, const std::string& word, char charToFind) {
-            size_t character = word.find(charToFind);
-            if (character == std::string::npos) throw Errors::InvalidSyntaxException();
-
-            return character;
-        }
-
-        GeneralRegister* findRegister(CPU& cpu, std::string str, size_t pos) {
-            int id = std::stoi(str.substr(pos + 1));
-            if (id < 0 || id >= 8) throw Errors::RegisterOutOfBoundsException();
-
-            return &cpu.getRegister(id);
-        }
-
     public:
         ArithmeticInstruction(CPU& cpu, const std::string& args) : flags(cpu.getFlags()), dest(nullptr), src(nullptr), immediateValue(0), useImmediate(false) {        
             try {
                 // Find "," from command
-                size_t commaPos = findChar(cpu, args, ',');
+                size_t commaPos = Instruction::findChar(cpu, args, ',');
 
                 // Grab destination register and source register
                 std::string destStr = args.substr(0, commaPos);
                 std::string srcStr = args.substr(commaPos + 1);
 
                 // Find "R" from destination register
-                size_t destR = findChar(cpu, destStr, 'R');
+                size_t destR = Instruction::findChar(cpu, destStr, 'R');
 
-                dest = findRegister(cpu, destStr,destR);
+                dest = Instruction::findRegister(cpu, destStr,destR);
 
                 // Find "R" from source register, if entered literal value, useImmediate = true
                 size_t srcR = srcStr.find('R');
 
                 if (srcR != std::string::npos) {
-                    src = findRegister(cpu, srcStr,srcR);
+                    src = Instruction::findRegister(cpu, srcStr,srcR);
                 } else {
                     immediateValue = std::stoi(srcStr);
                     useImmediate = true;
@@ -750,19 +751,10 @@ class InputInstruction : public Instruction {
 
     public:
         InputInstruction(CPU& cpu, const std::string& regStr) : flags(cpu.getFlags()), reg(nullptr) {
-            if (regStr.length() < 2 || regStr[0] != 'R') throw Errors::InvalidSyntaxException();
-
             try {
-                size_t processedChars = 0;
-                int regId = std::stoi(regStr.substr(1), &processedChars); // Get how many characters parsed from processedChars
-
-                if ((processedChars + 1) < regStr.length()) { // Check if processedChars is longer than 2 char
-                    std::string remainder = regStr.substr(processedChars + 1);
-                    if (remainder.find_first_not_of(" \t\r\n") != std::string::npos) throw Errors::InvalidSyntaxException(); 
-                }
-                
-                if (regId >= 0 && regId < 8) reg = &cpu.getRegister(regId);
-                else throw Errors::RegisterOutOfBoundsException();
+                // Find 'R' from the input argument string
+                size_t regR = Instruction::findChar(cpu, regStr, 'R');
+                reg = Instruction::findRegister(cpu, regStr, regR);
             } catch (...) {
                 throw;
             }
@@ -798,16 +790,11 @@ class DisplayInstruction : public Instruction {
         GeneralRegister* reg;
 
     public:
-        DisplayInstruction(CPU& cpu, const std::string& regStr)
-            : reg(nullptr) {
-
-            if (regStr.length() < 2 || regStr[0] != 'R') throw Errors::InvalidSyntaxException();
-
+        DisplayInstruction(CPU& cpu, const std::string& regStr) : reg(nullptr) {
             try {
-                int regId = std::stoi(regStr.substr(1));
-
-                if (regId >= 0 && regId < 8) reg = &cpu.getRegister(regId);
-                else throw Errors::RegisterOutOfBoundsException();
+                // Find 'R' from the input argument string
+                size_t regR = Instruction::findChar(cpu, regStr, 'R');
+                reg = Instruction::findRegister(cpu, regStr, regR);
             } catch (...) {
                 throw;
             }
@@ -826,33 +813,19 @@ class RotateInstruction : public Instruction {
         GeneralRegister* dest;
         int count;
 
-        size_t findChar(CPU& cpu, const std::string& word, char charToFind) {
-            size_t character = word.find(charToFind);
-            if (character == std::string::npos) throw Errors::InvalidSyntaxException();
-
-            return character;
-        }
-
-        GeneralRegister* findRegister(CPU& cpu, std::string str, size_t pos) {
-            int id = std::stoi(str.substr(pos + 1));
-            if (id < 0 || id >= 8) throw Errors::RegisterOutOfBoundsException();
-
-            return &cpu.getRegister(id);
-        }
-
     public:
         RotateInstruction(CPU& cpu, const std::string& args) {
             try {
                 // Find "," from command
-                size_t commaPos = findChar(cpu, args, ',');
+                size_t commaPos = Instruction::findChar(cpu, args, ',');
 
                 // Grab destination register and count
                 std::string destStr = args.substr(0, commaPos);
                 std::string countStr = args.substr(commaPos + 1);
 
                 // Find "R" from destination register
-                size_t destR = findChar(cpu, destStr, 'R');
-                dest = findRegister(cpu, destStr,destR);
+                size_t destR = Instruction::findChar(cpu, destStr, 'R');
+                dest = Instruction::findRegister(cpu, destStr,destR);
 
                 // Get count
                 count = std::stoi(countStr);
