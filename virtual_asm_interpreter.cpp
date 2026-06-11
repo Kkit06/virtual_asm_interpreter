@@ -865,6 +865,46 @@ class RorInstruction : public RotateInstruction {
         }
 };
 
+// SHL <DestinationRegister> , <count>
+class ShlInstruction : public RotateInstruction {
+    public:
+        ShlInstruction(CPU& cpu, const std::string& args)
+            : RotateInstruction(cpu, args) {}
+
+        void execute(CPU&) override {
+            unsigned char v = static_cast<unsigned char>(dest->getByte());
+
+            unsigned char result;
+
+            if (count >= 8)
+                result = 0;
+            else
+                result = (v << count) & 0xFF;
+
+            dest->setByte(static_cast<signed char>(result));
+        }
+};
+
+// SHR <DestinationRegister> , <count>
+class ShrInstruction : public RotateInstruction {
+    public:
+        ShrInstruction(CPU& cpu, const std::string& args)
+            : RotateInstruction(cpu, args) {}
+
+        void execute(CPU&) override {
+            unsigned char v = static_cast<unsigned char>(dest->getByte());
+
+            unsigned char result;
+
+            if (count >= 8)
+                result = 0;
+            else
+                result = v >> count;
+
+            dest->setByte(static_cast<signed char>(result));
+        }
+};
+
 // Run the cpu once all instruction are defined
 void CPU::run(Vector<Instruction*>& program) {
     while (PC >= 0 && PC < program.size()) {
@@ -991,6 +1031,8 @@ class Runner {
             if (line.rfind("DISPLAY ", 0) == 0) return new DisplayInstruction(cpu, line.substr(8));
             if (line.rfind("ROL ", 0) == 0) return new RolInstruction(cpu, line.substr(4));
             if (line.rfind("ROR ", 0) == 0) return new RorInstruction(cpu, line.substr(4));
+            if (line.rfind("SHL ", 0) == 0) return new ShlInstruction(cpu, line.substr(4));
+            if (line.rfind("SHR ", 0) == 0) return new ShrInstruction(cpu, line.substr(4));
 
             return nullptr; // No command found
         }
