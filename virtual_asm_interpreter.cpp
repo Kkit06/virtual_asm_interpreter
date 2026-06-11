@@ -865,6 +865,64 @@ class RorInstruction : public RotateInstruction {
         }
 };
 
+//increment  and decrement operation
+//function - directly manipulate CPU registers and update CPU status flags
+class IncDecInstruction : public Instruction {
+protected:
+    GeneralRegister* dest;
+    FlagRegister& flags;
+
+public:
+    IncDecInstruction(CPU& cpu, const std::string& regStr)
+        : dest(nullptr), flags(cpu.getFlags()) {
+
+        try {
+            size_t regR = Instruction::findChar(cpu, regStr, 'R');
+            dest = Instruction::findRegister(cpu, regStr, regR);
+        }
+        catch (...) {
+            throw;
+        }
+    }
+
+    void updateFlags(int result) {
+        flags.setOF(result > 127);
+        flags.setUF(result < -128);
+        flags.setZF(static_cast<signed char>(result) == 0);
+    }
+};
+//increase the value by 1
+class IncInstruction : public IncDecInstruction {
+public:
+    IncInstruction(CPU& cpu, const std::string& regStr)
+        : IncDecInstruction(cpu, regStr) {}
+
+    void execute(CPU& cpu) override {
+        if (!dest) return;
+
+        int result = dest->getValue() + 1;
+
+        updateFlags(result);
+        dest->setValue(result);
+    }
+};
+
+//decrease the value by 1
+class DecInstruction : public IncDecInstruction {
+public:
+    DecInstruction(CPU& cpu, const std::string& regStr)
+        : IncDecInstruction(cpu, regStr) {}
+
+    void execute(CPU& cpu) override {
+        if (!dest) return;
+
+        int result = dest->getValue() - 1;
+
+        updateFlags(result);
+        dest->setValue(result);
+    }
+};
+
 // Run the cpu once all instruction are defined
 void CPU::run(Vector<Instruction*>& program) {
     while (PC >= 0 && PC < program.size()) {
@@ -991,7 +1049,8 @@ class Runner {
             if (line.rfind("DISPLAY ", 0) == 0) return new DisplayInstruction(cpu, line.substr(8));
             if (line.rfind("ROL ", 0) == 0) return new RolInstruction(cpu, line.substr(4));
             if (line.rfind("ROR ", 0) == 0) return new RorInstruction(cpu, line.substr(4));
-
+            if (line.rfind("INC ", 0) == 0) return new IncInstruction(cpu, line.substr(4));
+            if (line.rfind("DEC ", 0) == 0) return new DecInstruction(cpu, line.substr(4));
             return nullptr; // No command found
         }
 
