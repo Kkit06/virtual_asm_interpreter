@@ -3,6 +3,7 @@
 #include <string>
 #include <limits>
 #include <fstream>
+#include <cstdint>
 
 // ----- EXCEPTION CLASSES -----
 struct Errors {
@@ -324,15 +325,15 @@ class Register {
 
         virtual ~Register() {}
 
-        signed char getByte() const { return value; }
+        int8_t getByte() const { return value; }
         int getValue() const { return static_cast<int>(value); }
 
-        void setByte(signed char newValue) { value = newValue; }
-        void setValue(int newValue) { value = static_cast<signed char>(newValue); }
+        void setByte(int8_t newValue) { value = newValue; }
+        void setValue(int newValue) { value = static_cast<int8_t>(newValue); }
 
         // Get register value in 8 bit binary
         void getBinary(Queue<int> bits) const {
-            unsigned char val = static_cast<unsigned char>(value);
+            uint8_t val = static_cast<uint8_t>(value);
             for (int i = 7; i >= 0; i--) {
                 bits.enqueue((val >> i) & 1); 
             }
@@ -344,7 +345,7 @@ class Register {
         }
 
     private:
-        signed char value;  // 1-byte signed value stored (-128 to 127)
+        int8_t value;  // 1-byte signed value stored (-128 to 127)
 };
 
 // R0-R7 registers 
@@ -392,13 +393,13 @@ class FlagRegister {
 // Memory array
 class Memory {
     private:
-        Vector<signed char> data;   // The array of 64 byte memory
+        Vector<int8_t> data;   // The array of 64 byte memory
 
     public:
         Memory() : data(64, 0) {} // Create data vector with 64 zeros
 
         // Get the address byte
-        signed char getByte(int address) const {
+        int8_t getByte(int address) const {
             if (address < 0 || address >= 64) throw Errors::IndexOutOfBoundsException();
             return data[address];
         }
@@ -409,8 +410,8 @@ class Memory {
             return static_cast<int>(data[address]);
         }
 
-        // Sets signed char at address when it is valid
-        void setByte(int address, signed char value) {
+        // Sets int8_t at address when it is valid
+        void setByte(int address, int8_t value) {
             if (address < 0 || address >= 64) throw Errors::IndexOutOfBoundsException();
             data.replace(address, value);
         }
@@ -418,7 +419,7 @@ class Memory {
         // Sets int at address when it is valid
         void setValue(int address, int value) {
             if (address < 0 || address >= 64) throw Errors::IndexOutOfBoundsException();
-            data.replace(address, static_cast<signed char>(value));
+            data.replace(address, static_cast<int8_t>(value));
         }
 
         // Reset all memory slot to 0
@@ -435,9 +436,9 @@ class CPU {
         GeneralRegister registers[8];       // 8 general registers, in a array
         FlagRegister* flags;                // Flag register
         Memory memory;                      // 64 byte of memory
-        Stack<signed char, 8> stack;        // 8 byte of stack
-        signed char PC;                     // Program counter
-        signed char SI;                     // Stack index
+        Stack<int8_t, 8> stack;             // 8 byte of stack
+        int8_t PC;                          // Program counter
+        int8_t SI;                          // Stack index
 
         // Format the data to 4 digit
         void formatDisplay(int value) {
@@ -463,7 +464,7 @@ class CPU {
             }
 
             while (!stack.isEmpty()) {
-                signed char temp = stack.pop();
+                int8_t temp = stack.pop();
             }
 
             flags->resetFlags();
@@ -505,7 +506,7 @@ class CPU {
         }
 
         // Get the top most value in the stack and pop it
-        signed char getStackByte() {
+        int8_t getStackByte() {
             try {
                 return stack.pop(); 
             } 
@@ -526,7 +527,7 @@ class CPU {
         }
 
         // Push value into cpu's stack
-        void pushStackByte(signed char value) {
+        void pushStackByte(int8_t value) {
             try {
                 stack.push(value); 
             } 
@@ -537,7 +538,7 @@ class CPU {
         }
 
         void pushStackValue(int value) {
-            pushStackByte(static_cast<signed char>(value));
+            pushStackByte(static_cast<int8_t>(value));
         }
 
         // Get and set the value of the Program Counter.
@@ -547,7 +548,7 @@ class CPU {
         // Get the value of the stack index.
         int getSI() const { return SI; }
 
-        // Get refrence to flags
+        // Get reference to flags
         FlagRegister& getFlags() { return *flags; }
 
         void run(Vector<Instruction*>& program);
@@ -597,7 +598,7 @@ class ArithmeticInstruction : public Instruction {
             flags.setOF(result > 127);
             flags.setUF(result < -128);
             flags.setCF(unsignedResult > 255);
-            flags.setZF(static_cast<signed char>(result) == 0);
+            flags.setZF(static_cast<int8_t>(result) == 0);
         }
 
     public:
@@ -605,6 +606,7 @@ class ArithmeticInstruction : public Instruction {
             try {
                 // Find "," from command
                 size_t commaPos = Instruction::findChar(cpu, args, ',');
+                if (args.find(',', commaPos + 1) != std::string::npos) throw Errors::InvalidSyntaxException(); // Check if second comma exist
 
                 // Grab destination register and source register
                 std::string destStr = args.substr(0, commaPos);
@@ -612,14 +614,12 @@ class ArithmeticInstruction : public Instruction {
 
                 // Find "R" from destination register
                 size_t destR = Instruction::findChar(cpu, destStr, 'R');
-
-                dest = Instruction::findRegister(cpu, destStr,destR);
+                dest = Instruction::findRegister(cpu, destStr, destR);
 
                 // Find "R" from source register, if entered literal value, useImmediate = true
                 size_t srcR = srcStr.find('R');
-
                 if (srcR != std::string::npos) {
-                    src = Instruction::findRegister(cpu, srcStr,srcR);
+                    src = Instruction::findRegister(cpu, srcStr, srcR);
                 } else {
                     immediateValue = std::stoi(srcStr);
                     useImmediate = true;
@@ -648,7 +648,7 @@ class AddInstruction : public ArithmeticInstruction {
             int result = destVal + srcVal;
 
             // Change to unsigned for Carry Flag
-            unsigned int unsignedResult = static_cast<unsigned char>(dest->getByte()) + static_cast<unsigned char>(srcVal);
+            unsigned int unsignedResult = static_cast<uint8_t>(dest->getByte()) + static_cast<uint8_t>(srcVal);
             updateFlags(result, unsignedResult);
             dest->setValue(result);
         }
@@ -672,7 +672,7 @@ class SubInstruction : public ArithmeticInstruction {
             int result = destVal - srcVal;
 
             // Change to unsigned for Carry Flag
-            unsigned int unsignedResult = static_cast<unsigned int>(static_cast<unsigned char>(destVal)) - static_cast<unsigned int>(static_cast<unsigned char>(srcVal));
+            unsigned int unsignedResult = static_cast<unsigned int>(static_cast<uint8_t>(destVal)) - static_cast<unsigned int>(static_cast<uint8_t>(srcVal));
             updateFlags(result, unsignedResult);
             dest->setValue(result);
         }
@@ -696,7 +696,7 @@ class MulInstruction : public ArithmeticInstruction {
             int result = destVal * srcVal;
 
             // Change to unsigned for Carry Flag
-            unsigned int unsignedResult = static_cast<unsigned int>(static_cast<unsigned char>(destVal)) * static_cast<unsigned int>(static_cast<unsigned char>(srcVal));
+            unsigned int unsignedResult = static_cast<unsigned int>(static_cast<uint8_t>(destVal)) * static_cast<unsigned int>(static_cast<uint8_t>(srcVal));
             updateFlags(result, unsignedResult);
             dest->setValue(result);
         }
@@ -726,7 +726,7 @@ class DivInstruction : public ArithmeticInstruction {
             int result = destVal / srcVal;
 
             // Change to unsigned for Carry Flag
-            unsigned int unsignedResult = static_cast<unsigned int>(static_cast<unsigned char>(destVal)) / static_cast<unsigned int>(static_cast<unsigned char>(srcVal));
+            unsigned int unsignedResult = static_cast<unsigned int>(static_cast<uint8_t>(destVal)) / static_cast<unsigned int>(static_cast<uint8_t>(srcVal));
             updateFlags(result, unsignedResult);
             dest->setValue(result);
         }
@@ -752,6 +752,9 @@ class InputInstruction : public Instruction {
     public:
         InputInstruction(CPU& cpu, const std::string& regStr) : flags(cpu.getFlags()), reg(nullptr) {
             try {
+                // Check if there is only 1 parameter
+                if (regStr.find(',') != std::string::npos || regStr.find_first_not_of(" \t\r\n") == std::string::npos) throw Errors::InvalidSyntaxException();
+
                 // Find 'R' from the input argument string
                 size_t regR = Instruction::findChar(cpu, regStr, 'R');
                 reg = Instruction::findRegister(cpu, regStr, regR);
@@ -792,6 +795,9 @@ class DisplayInstruction : public Instruction {
     public:
         DisplayInstruction(CPU& cpu, const std::string& regStr) : reg(nullptr) {
             try {
+                // Check if there is only 1 parameter
+                if (regStr.find(',') != std::string::npos || regStr.find_first_not_of(" \t\r\n") == std::string::npos) throw Errors::InvalidSyntaxException();
+
                 // Find 'R' from the input argument string
                 size_t regR = Instruction::findChar(cpu, regStr, 'R');
                 reg = Instruction::findRegister(cpu, regStr, regR);
@@ -818,6 +824,7 @@ class RotateInstruction : public Instruction {
             try {
                 // Find "," from command
                 size_t commaPos = Instruction::findChar(cpu, args, ',');
+                if (args.find(',', commaPos + 1) != std::string::npos) throw Errors::InvalidSyntaxException(); // Check if second comma exist
 
                 // Grab destination register and count
                 std::string destStr = args.substr(0, commaPos);
@@ -825,7 +832,7 @@ class RotateInstruction : public Instruction {
 
                 // Find "R" from destination register
                 size_t destR = Instruction::findChar(cpu, destStr, 'R');
-                dest = Instruction::findRegister(cpu, destStr,destR);
+                dest = Instruction::findRegister(cpu, destStr, destR);
 
                 // Get count
                 count = std::stoi(countStr);
@@ -842,11 +849,11 @@ class RolInstruction : public RotateInstruction {
             : RotateInstruction(cpu, args) {}
 
         void execute(CPU&) override {   
-            unsigned char v = static_cast<unsigned char>(dest->getByte());
+            uint8_t v = static_cast<uint8_t>(dest->getByte());
             int shift = count % 8; // Optimized to avoid unnecessary rotations
-            unsigned char rotated = ((v << shift) & 0xFF) | (v >> (8 - shift));
+            uint8_t rotated = ((v << shift) & 0xFF) | (v >> (8 - shift));
 
-            dest->setByte(static_cast<signed char>(rotated));
+            dest->setByte(static_cast<int8_t>(rotated));
         }
 };
 
@@ -857,11 +864,11 @@ class RorInstruction : public RotateInstruction {
             : RotateInstruction(cpu, args) {}
 
         void execute(CPU&) override {   
-            unsigned char v = static_cast<unsigned char>(dest->getByte());
+            uint8_t v = static_cast<uint8_t>(dest->getByte());
             int shift = count % 8;  // Optimized to avoid unnecessary rotations
-            unsigned char rotated = (v >> shift) | ((v << (8 - shift)) & 0xFF);
+            uint8_t rotated = (v >> shift) | ((v << (8 - shift)) & 0xFF);
             
-            dest->setByte(static_cast<signed char>(rotated));
+            dest->setByte(static_cast<int8_t>(rotated));
         }
 };
 
@@ -902,6 +909,67 @@ class ShrInstruction : public RotateInstruction {
                 result = v >> count;
 
             dest->setByte(static_cast<signed char>(result));
+        }
+};
+
+// Increment/Decrement Intermediate Class (INC, DEC)
+class IncDecInstruction : public Instruction {
+    protected:
+        GeneralRegister* dest;
+        FlagRegister& flags;
+
+    public:
+        IncDecInstruction(CPU& cpu, const std::string& regStr)
+            : dest(nullptr), flags(cpu.getFlags()) {
+
+            try {
+                // Check if there is only 1 parameter
+                if (regStr.find(',') != std::string::npos || regStr.find_first_not_of(" \t\r\n") == std::string::npos) throw Errors::InvalidSyntaxException();
+
+                size_t regR = Instruction::findChar(cpu, regStr, 'R');
+                dest = Instruction::findRegister(cpu, regStr, regR);
+            }
+            catch (...) {
+                throw;
+            }
+        }
+
+        void updateFlags(int result) {
+            flags.setOF(result > 127);
+            flags.setUF(result < -128);
+            flags.setZF(static_cast<signed char>(result) == 0);
+        }
+};
+
+// INC <Destination Register>
+class IncInstruction : public IncDecInstruction {
+    public:
+        IncInstruction(CPU& cpu, const std::string& regStr)
+            : IncDecInstruction(cpu, regStr) {}
+
+        void execute(CPU& cpu) override {
+            if (!dest) return;
+
+            int result = dest->getValue() + 1; //// increase the value by 1
+
+            updateFlags(result);
+            dest->setValue(result);
+        }
+};
+
+// DEC <Destination Register>
+class DecInstruction : public IncDecInstruction {
+    public:
+        DecInstruction(CPU& cpu, const std::string& regStr)
+            : IncDecInstruction(cpu, regStr) {}
+
+        void execute(CPU& cpu) override {
+            if (!dest) return;
+
+            int result = dest->getValue() - 1; //decrease the value by 1
+
+            updateFlags(result);
+            dest->setValue(result);
         }
 };
 
@@ -1006,7 +1074,7 @@ class Runner {
                     return false;
                 }
 
-                // Reset CPU and run the intructions
+                // Reset CPU and run the instructions
                 cpu.reset();
                 cpu.run(program);
 
@@ -1020,7 +1088,7 @@ class Runner {
         }
 
     private:
-        CPU& cpu;       // Refrence to CPU in the program
+        CPU& cpu;       // Reference to CPU in the program
 
         Instruction* decode(const std::string& line) {
             if (line.rfind("INPUT ", 0) == 0) return new InputInstruction(cpu, line.substr(6));
@@ -1033,7 +1101,8 @@ class Runner {
             if (line.rfind("ROR ", 0) == 0) return new RorInstruction(cpu, line.substr(4));
             if (line.rfind("SHL ", 0) == 0) return new ShlInstruction(cpu, line.substr(4));
             if (line.rfind("SHR ", 0) == 0) return new ShrInstruction(cpu, line.substr(4));
-
+            if (line.rfind("INC ", 0) == 0) return new IncInstruction(cpu, line.substr(4));
+            if (line.rfind("DEC ", 0) == 0) return new DecInstruction(cpu, line.substr(4));
             return nullptr; // No command found
         }
 
