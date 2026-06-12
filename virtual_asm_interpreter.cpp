@@ -732,6 +732,42 @@ class DivInstruction : public ArithmeticInstruction {
         }
 };
 
+// MOV <Destination Register>, <Value / Register>
+class MovInstruction : public Instruction {
+    private:
+        GeneralRegister* dest;
+        GeneralRegister* src;
+        int immediateValue;
+
+    public:
+        MovInstruction(CPU& cpu, const std::string& args) : dest(nullptr), src(nullptr), immediateValue(0) {
+            try {
+                size_t commaPos = Instruction::findChar(cpu, args, ',');
+
+                if (args.find(',', commaPos + 1) != std::string::npos)
+                    throw Errors::InvalidSyntaxException();
+
+                std::string destStr = args.substr(0, commaPos);
+                std::string srcStr = args.substr(commaPos + 1);
+
+                size_t destR = Instruction::findChar(cpu, destStr, 'R');
+                dest = Instruction::findRegister(cpu, destStr, destR);
+
+                size_t bracketOpen = srcStr.find('[');
+                size_t bracketClose = srcStr.find(']');
+                size_t srcR = srcStr.find('R');
+
+                if (srcR != std::string::npos) {
+                    src = Instruction::findRegister(cpu, srcStr, srcR);
+                } else {
+                    immediateValue = std::stoi(srcStr);
+                }
+            } catch (...) {
+                throw;
+            }
+        }
+};
+
 // INPUT <Register>
 class InputInstruction : public Instruction {
     private:
