@@ -551,6 +551,9 @@ class CPU {
         // Get reference to flags
         FlagRegister& getFlags() { return *flags; }
 
+        // Get memory
+        Memory& getMemory() { return memory; }
+
         void run(Vector<Instruction*>& program);
 };
 
@@ -769,6 +772,24 @@ class MovInstruction : public Instruction {
                 }
             } catch (...) {
                 throw;
+            }
+        }
+
+        void execute(CPU& cpu) override {
+            if (!dest) return;
+
+            switch (mode) {
+                case IMMEDIATE:
+                    dest->setValue(immediateValue);
+                    break;
+                case REGISTER:
+                    dest->setValue(src->getValue());
+                    break;
+                case MEMORY:
+                    int address = src->getValue();
+                    int memoryValue = cpu.getMemory().getValue(address);
+                    dest->setValue(memoryValue);
+                    break;
             }
         }
 };
@@ -1149,6 +1170,7 @@ class Runner {
             if (line.rfind("SHR ", 0) == 0) return new ShrInstruction(cpu, line.substr(4));
             if (line.rfind("INC ", 0) == 0) return new IncInstruction(cpu, line.substr(4));
             if (line.rfind("DEC ", 0) == 0) return new DecInstruction(cpu, line.substr(4));
+            if (line.rfind("MOV ", 0) == 0) return new MovInstruction(cpu, line.substr(4));
             return nullptr; // No command found
         }
 
