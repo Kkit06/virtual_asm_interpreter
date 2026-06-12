@@ -606,6 +606,7 @@ class ArithmeticInstruction : public Instruction {
             try {
                 // Find "," from command
                 size_t commaPos = Instruction::findChar(cpu, args, ',');
+                if (args.find(',', commaPos + 1) != std::string::npos) throw Errors::InvalidSyntaxException(); // Check if second comma exist
 
                 // Grab destination register and source register
                 std::string destStr = args.substr(0, commaPos);
@@ -614,11 +615,10 @@ class ArithmeticInstruction : public Instruction {
                 // Find "R" from destination register
                 size_t destR = Instruction::findChar(cpu, destStr, 'R');
 
-                dest = Instruction::findRegister(cpu, destStr, destR);
+                dest = Instruction::findRegister(cpu, destStr,destR);
 
                 // Find "R" from source register, if entered literal value, useImmediate = true
                 size_t srcR = srcStr.find('R');
-
                 if (srcR != std::string::npos) {
                     src = Instruction::findRegister(cpu, srcStr, srcR);
                 } else {
@@ -753,6 +753,9 @@ class InputInstruction : public Instruction {
     public:
         InputInstruction(CPU& cpu, const std::string& regStr) : flags(cpu.getFlags()), reg(nullptr) {
             try {
+                // Check if there is only 1 parameter
+                if (regStr.find(',') != std::string::npos || regStr.find_first_not_of(" \t\r\n") == std::string::npos) throw Errors::InvalidSyntaxException();
+
                 // Find 'R' from the input argument string
                 size_t regR = Instruction::findChar(cpu, regStr, 'R');
                 reg = Instruction::findRegister(cpu, regStr, regR);
@@ -793,6 +796,9 @@ class DisplayInstruction : public Instruction {
     public:
         DisplayInstruction(CPU& cpu, const std::string& regStr) : reg(nullptr) {
             try {
+                // Check if there is only 1 parameter
+                if (regStr.find(',') != std::string::npos || regStr.find_first_not_of(" \t\r\n") == std::string::npos) throw Errors::InvalidSyntaxException();
+
                 // Find 'R' from the input argument string
                 size_t regR = Instruction::findChar(cpu, regStr, 'R');
                 reg = Instruction::findRegister(cpu, regStr, regR);
@@ -819,6 +825,7 @@ class RotateInstruction : public Instruction {
             try {
                 // Find "," from command
                 size_t commaPos = Instruction::findChar(cpu, args, ',');
+                if (args.find(',', commaPos + 1) != std::string::npos) throw Errors::InvalidSyntaxException(); // Check if second comma exist
 
                 // Grab destination register and count
                 std::string destStr = args.substr(0, commaPos);
@@ -830,6 +837,7 @@ class RotateInstruction : public Instruction {
 
                 // Get count
                 count = std::stoi(countStr);
+                if (count < 0) throw Errors::InvalidSyntaxException();
             } catch (...) {
                 throw;
             }
@@ -862,7 +870,7 @@ class RorInstruction : public RotateInstruction {
             int shift = count % 8;  // Optimized to avoid unnecessary rotations
             uint8_t rotated = (v >> shift) | ((v << (8 - shift)) & 0xFF);
             
-            dest->setByte(static_cast<int8_t>(rotated));
+            dest->setByte(static_cast<signed char>(rotated));
         }
 };
 
@@ -932,7 +940,10 @@ class Runner {
             if (line.rfind("DISPLAY ", 0) == 0) return new DisplayInstruction(cpu, line.substr(8));
             if (line.rfind("ROL ", 0) == 0) return new RolInstruction(cpu, line.substr(4));
             if (line.rfind("ROR ", 0) == 0) return new RorInstruction(cpu, line.substr(4));
-
+            if (line.rfind("SHL ", 0) == 0) return new ShlInstruction(cpu, line.substr(4));
+            if (line.rfind("SHR ", 0) == 0) return new ShrInstruction(cpu, line.substr(4));
+            if (line.rfind("INC ", 0) == 0) return new IncInstruction(cpu, line.substr(4));
+            if (line.rfind("DEC ", 0) == 0) return new DecInstruction(cpu, line.substr(4));
             return nullptr; // No command found
         }
 
@@ -955,6 +966,10 @@ class Runner {
             }
             catch (const Errors::InvalidSyntaxException&) {
                 std::cout << "ERROR: Syntax error at line " << lineNumber << "\n\n";
+                throw; 
+            }
+            catch (...) {
+                std::cout << "ERROR: Invalid arguments at line " << lineNumber << "\n\n";
                 throw; 
             }
         }
