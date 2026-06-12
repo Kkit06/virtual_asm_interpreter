@@ -836,6 +836,7 @@ class RotateInstruction : public Instruction {
 
                 // Get count
                 count = std::stoi(countStr);
+                if (count < 0) throw Errors::InvalidSyntaxException();
             } catch (...) {
                 throw;
             }
@@ -879,16 +880,15 @@ class ShlInstruction : public RotateInstruction {
             : RotateInstruction(cpu, args) {}
 
         void execute(CPU&) override {
-            unsigned char v = static_cast<unsigned char>(dest->getByte());
-
-            unsigned char result;
+            uint8_t v = static_cast<uint8_t>(dest->getByte());
+            uint8_t result;
 
             if (count >= 8)
                 result = 0;
             else
                 result = (v << count) & 0xFF;
 
-            dest->setByte(static_cast<signed char>(result));
+            dest->setByte(static_cast<int8_t>(result));
         }
 };
 
@@ -899,19 +899,17 @@ class ShrInstruction : public RotateInstruction {
             : RotateInstruction(cpu, args) {}
 
         void execute(CPU&) override {
-            unsigned char v = static_cast<unsigned char>(dest->getByte());
-
-            unsigned char result;
+            uint8_t v = static_cast<uint8_t>(dest->getByte());
+            uint8_t result;
 
             if (count >= 8)
                 result = 0;
             else
                 result = v >> count;
 
-            dest->setByte(static_cast<signed char>(result));
+            dest->setByte(static_cast<int8_t>(result));
         }
 };
-
 // Increment/Decrement Intermediate Class (INC, DEC)
 class IncDecInstruction : public Instruction {
     protected:
@@ -1045,7 +1043,13 @@ class Runner {
                 if (instr) delete instr;    // Free allocation
                 return false;
             }
+            catch (const Errors::InvalidSyntaxException&) {
+                std::cout << "ERROR: Invalid Syntax / Missing arguments.\n\n";
+                if (instr) delete instr;    // Free allocation
+                return false;
+            }
             catch (...) {
+                std::cout << "ERROR: Invalid arguments.\n\n";
                 if (instr) delete instr;    // Free allocation
                 return false;
             }
@@ -1125,6 +1129,10 @@ class Runner {
             }
             catch (const Errors::InvalidSyntaxException&) {
                 std::cout << "ERROR: Syntax error at line " << lineNumber << "\n\n";
+                throw; 
+            }
+            catch (...) {
+                std::cout << "ERROR: Invalid arguments at line " << lineNumber << "\n\n";
                 throw; 
             }
         }
