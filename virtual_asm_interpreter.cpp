@@ -738,12 +738,12 @@ class MovInstruction : public Instruction {
         GeneralRegister* dest;
         GeneralRegister* src;
         int immediateValue;
+        enum Mode { IMMEDIATE, REGISTER, MEMORY } mode;
 
     public:
         MovInstruction(CPU& cpu, const std::string& args) : dest(nullptr), src(nullptr), immediateValue(0) {
             try {
                 size_t commaPos = Instruction::findChar(cpu, args, ',');
-
                 if (args.find(',', commaPos + 1) != std::string::npos)
                     throw Errors::InvalidSyntaxException();
 
@@ -757,9 +757,14 @@ class MovInstruction : public Instruction {
                 size_t bracketClose = srcStr.find(']');
                 size_t srcR = srcStr.find('R');
 
-                if (srcR != std::string::npos) {
+                if (bracketOpen != std::string::npos && bracketClose != std::string::npos) {
+                    mode = MEMORY;
+                    src = Instruction::findRegister(cpu, srcStr, srcR); 
+                } else if (srcR != std::string::npos) {
+                    mode = REGISTER;
                     src = Instruction::findRegister(cpu, srcStr, srcR);
                 } else {
+                    mode = IMMEDIATE;
                     immediateValue = std::stoi(srcStr);
                 }
             } catch (...) {
