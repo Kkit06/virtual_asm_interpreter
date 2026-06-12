@@ -836,6 +836,7 @@ class RotateInstruction : public Instruction {
 
                 // Get count
                 count = std::stoi(countStr);
+                if (count < 0) throw Errors::InvalidSyntaxException();
             } catch (...) {
                 throw;
             }
@@ -872,65 +873,102 @@ class RorInstruction : public RotateInstruction {
         }
 };
 
+// SHL <DestinationRegister> , <count>
+class ShlInstruction : public RotateInstruction {
+    public:
+        ShlInstruction(CPU& cpu, const std::string& args)
+            : RotateInstruction(cpu, args) {}
+
+        void execute(CPU&) override {
+            uint8_t v = static_cast<uint8_t>(dest->getByte());
+            uint8_t result;
+
+            if (count >= 8)
+                result = 0;
+            else
+                result = (v << count) & 0xFF;
+
+            dest->setByte(static_cast<int8_t>(result));
+        }
+};
+
+// SHR <DestinationRegister> , <count>
+class ShrInstruction : public RotateInstruction {
+    public:
+        ShrInstruction(CPU& cpu, const std::string& args)
+            : RotateInstruction(cpu, args) {}
+
+        void execute(CPU&) override {
+            uint8_t v = static_cast<uint8_t>(dest->getByte());
+            uint8_t result;
+
+            if (count >= 8)
+                result = 0;
+            else
+                result = v >> count;
+
+            dest->setByte(static_cast<int8_t>(result));
+        }
+};
 // Increment/Decrement Intermediate Class (INC, DEC)
 class IncDecInstruction : public Instruction {
-protected:
-    GeneralRegister* dest;
-    FlagRegister& flags;
+    protected:
+        GeneralRegister* dest;
+        FlagRegister& flags;
 
-public:
-    IncDecInstruction(CPU& cpu, const std::string& regStr)
-        : dest(nullptr), flags(cpu.getFlags()) {
+    public:
+        IncDecInstruction(CPU& cpu, const std::string& regStr)
+            : dest(nullptr), flags(cpu.getFlags()) {
 
-        try {
-             // Check if there is only 1 parameter
-            if (regStr.find(',') != std::string::npos || regStr.find_first_not_of(" \t\r\n") == std::string::npos) throw Errors::InvalidSyntaxException();
+            try {
+                // Check if there is only 1 parameter
+                if (regStr.find(',') != std::string::npos || regStr.find_first_not_of(" \t\r\n") == std::string::npos) throw Errors::InvalidSyntaxException();
 
-            size_t regR = Instruction::findChar(cpu, regStr, 'R');
-            dest = Instruction::findRegister(cpu, regStr, regR);
+                size_t regR = Instruction::findChar(cpu, regStr, 'R');
+                dest = Instruction::findRegister(cpu, regStr, regR);
+            }
+            catch (...) {
+                throw;
+            }
         }
-        catch (...) {
-            throw;
-        }
-    }
 
-    void updateFlags(int result) {
-        flags.setOF(result > 127);
-        flags.setUF(result < -128);
-        flags.setZF(static_cast<signed char>(result) == 0);
-    }
+        void updateFlags(int result) {
+            flags.setOF(result > 127);
+            flags.setUF(result < -128);
+            flags.setZF(static_cast<signed char>(result) == 0);
+        }
 };
 
 // INC <Destination Register>
 class IncInstruction : public IncDecInstruction {
-public:
-    IncInstruction(CPU& cpu, const std::string& regStr)
-        : IncDecInstruction(cpu, regStr) {}
+    public:
+        IncInstruction(CPU& cpu, const std::string& regStr)
+            : IncDecInstruction(cpu, regStr) {}
 
-    void execute(CPU& cpu) override {
-        if (!dest) return;
+        void execute(CPU& cpu) override {
+            if (!dest) return;
 
-        int result = dest->getValue() + 1; //// increase the value by 1
+            int result = dest->getValue() + 1; //// increase the value by 1
 
-        updateFlags(result);
-        dest->setValue(result);
-    }
+            updateFlags(result);
+            dest->setValue(result);
+        }
 };
 
 // DEC <Destination Register>
 class DecInstruction : public IncDecInstruction {
-public:
-    DecInstruction(CPU& cpu, const std::string& regStr)
-        : IncDecInstruction(cpu, regStr) {}
+    public:
+        DecInstruction(CPU& cpu, const std::string& regStr)
+            : IncDecInstruction(cpu, regStr) {}
 
-    void execute(CPU& cpu) override {
-        if (!dest) return;
+        void execute(CPU& cpu) override {
+            if (!dest) return;
 
-        int result = dest->getValue() - 1; //decrease the value by 1
+            int result = dest->getValue() - 1; //decrease the value by 1
 
-        updateFlags(result);
-        dest->setValue(result);
-    }
+            updateFlags(result);
+            dest->setValue(result);
+        }
 };
 
 // Run the cpu once all instruction are defined
@@ -1005,7 +1043,13 @@ class Runner {
                 if (instr) delete instr;    // Free allocation
                 return false;
             }
+            catch (const Errors::InvalidSyntaxException&) {
+                std::cout << "ERROR: Invalid Syntax / Missing arguments.\n\n";
+                if (instr) delete instr;    // Free allocation
+                return false;
+            }
             catch (...) {
+                std::cout << "ERROR: Invalid arguments.\n\n";
                 if (instr) delete instr;    // Free allocation
                 return false;
             }
@@ -1059,6 +1103,8 @@ class Runner {
             if (line.rfind("DISPLAY ", 0) == 0) return new DisplayInstruction(cpu, line.substr(8));
             if (line.rfind("ROL ", 0) == 0) return new RolInstruction(cpu, line.substr(4));
             if (line.rfind("ROR ", 0) == 0) return new RorInstruction(cpu, line.substr(4));
+            if (line.rfind("SHL ", 0) == 0) return new ShlInstruction(cpu, line.substr(4));
+            if (line.rfind("SHR ", 0) == 0) return new ShrInstruction(cpu, line.substr(4));
             if (line.rfind("INC ", 0) == 0) return new IncInstruction(cpu, line.substr(4));
             if (line.rfind("DEC ", 0) == 0) return new DecInstruction(cpu, line.substr(4));
             return nullptr; // No command found
@@ -1083,6 +1129,10 @@ class Runner {
             }
             catch (const Errors::InvalidSyntaxException&) {
                 std::cout << "ERROR: Syntax error at line " << lineNumber << "\n\n";
+                throw; 
+            }
+            catch (...) {
+                std::cout << "ERROR: Invalid arguments at line " << lineNumber << "\n\n";
                 throw; 
             }
         }
