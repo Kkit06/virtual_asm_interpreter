@@ -870,7 +870,106 @@ class RorInstruction : public RotateInstruction {
             int shift = count % 8;  // Optimized to avoid unnecessary rotations
             uint8_t rotated = (v >> shift) | ((v << (8 - shift)) & 0xFF);
             
-            dest->setByte(static_cast<signed char>(rotated));
+            dest->setByte(static_cast<int8_t>(rotated));
+        }
+};
+
+// SHL <DestinationRegister> , <count>
+class ShlInstruction : public RotateInstruction {
+    public:
+        ShlInstruction(CPU& cpu, const std::string& args)
+            : RotateInstruction(cpu, args) {}
+
+        void execute(CPU&) override {
+            uint8_t v = static_cast<uint8_t>(dest->getByte());
+            uint8_t result;
+
+            if (count >= 8)
+                result = 0;
+            else
+                result = (v << count) & 0xFF;
+
+            dest->setByte(static_cast<int8_t>(result));
+        }
+};
+
+// SHR <DestinationRegister> , <count>
+class ShrInstruction : public RotateInstruction {
+    public:
+        ShrInstruction(CPU& cpu, const std::string& args)
+            : RotateInstruction(cpu, args) {}
+
+        void execute(CPU&) override {
+            uint8_t v = static_cast<uint8_t>(dest->getByte());
+            uint8_t result;
+
+            if (count >= 8)
+                result = 0;
+            else
+                result = v >> count;
+
+            dest->setByte(static_cast<int8_t>(result));
+        }
+};
+
+// Increment/Decrement Intermediate Class (INC, DEC)
+class IncDecInstruction : public Instruction {
+    protected:
+        GeneralRegister* dest;
+        FlagRegister& flags;
+
+    public:
+        IncDecInstruction(CPU& cpu, const std::string& regStr)
+            : dest(nullptr), flags(cpu.getFlags()) {
+
+            try {
+                // Check if there is only 1 parameter
+                if (regStr.find(',') != std::string::npos || regStr.find_first_not_of(" \t\r\n") == std::string::npos) throw Errors::InvalidSyntaxException();
+
+                size_t regR = Instruction::findChar(cpu, regStr, 'R');
+                dest = Instruction::findRegister(cpu, regStr, regR);
+            }
+            catch (...) {
+                throw;
+            }
+        }
+
+        void updateFlags(int result) {
+            flags.setOF(result > 127);
+            flags.setUF(result < -128);
+            flags.setZF(static_cast<signed char>(result) == 0);
+        }
+};
+
+// INC <Destination Register>
+class IncInstruction : public IncDecInstruction {
+    public:
+        IncInstruction(CPU& cpu, const std::string& regStr)
+            : IncDecInstruction(cpu, regStr) {}
+
+        void execute(CPU& cpu) override {
+            if (!dest) return;
+
+            int result = dest->getValue() + 1; //// increase the value by 1
+
+            updateFlags(result);
+            dest->setValue(result);
+        }
+};
+
+// DEC <Destination Register>
+class DecInstruction : public IncDecInstruction {
+    public:
+        DecInstruction(CPU& cpu, const std::string& regStr)
+            : IncDecInstruction(cpu, regStr) {}
+
+        void execute(CPU& cpu) override {
+            if (!dest) return;
+
+            int result = dest->getValue() - 1; //decrease the value by 1
+
+            updateFlags(result);
+            dest->setValue(result);
         }
 };
 
