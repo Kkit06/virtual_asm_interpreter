@@ -910,6 +910,7 @@ class ShrInstruction : public RotateInstruction {
             dest->setByte(static_cast<int8_t>(result));
         }
 };
+
 // Increment/Decrement Intermediate Class (INC, DEC)
 class IncDecInstruction : public Instruction {
     protected:
