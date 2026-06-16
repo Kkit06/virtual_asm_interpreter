@@ -583,7 +583,6 @@ class Instruction {
         }
 };
 
-// ----- ARITHMETIC -----
 // Arithmetic Intermediate Class (ADD, SUB, MUL, DIV)
 class ArithmeticInstruction : public Instruction {
     protected:
@@ -1040,6 +1039,59 @@ class DecInstruction : public IncDecInstruction {
         }
 };
 
+// PUSH <Register>
+class PushInstruction : public Instruction {
+    private:
+        GeneralRegister* reg;
+
+    public:
+        PushInstruction(CPU& cpu, const std::string& regStr) : reg(nullptr) {
+            try {
+                // Check if there is only 1 parameter
+                if (regStr.find(',') != std::string::npos || regStr.find_first_not_of(" \t\r\n") == std::string::npos) throw Errors::InvalidSyntaxException();
+
+                // Find 'R' from the input argument string
+                size_t regR = Instruction::findChar(cpu, regStr, 'R');
+                reg = Instruction::findRegister(cpu, regStr, regR);
+            } catch (...) {
+                throw;
+            }
+        }
+
+        void execute(CPU& cpu) override {
+            if (!reg) return;
+            
+            // Push the register's byte value onto the CPU stack
+            cpu.pushStackByte(reg->getByte());
+        }
+};
+
+// POP <Register>
+class PopInstruction : public Instruction {
+    private:
+        GeneralRegister* reg;
+
+    public:
+        PopInstruction(CPU& cpu, const std::string& regStr) : reg(nullptr) {
+            try {
+                if (regStr.find(',') != std::string::npos || regStr.find_first_not_of(" \t\r\n") == std::string::npos) throw Errors::InvalidSyntaxException();
+
+                // Find 'R' from the input argument string
+                size_t regR = Instruction::findChar(cpu, regStr, 'R');
+                reg = Instruction::findRegister(cpu, regStr, regR);
+            } catch (...) {
+                throw;
+            }
+        }
+
+        void execute(CPU& cpu) override {
+            if (!reg) return;
+            
+            int8_t value = cpu.getStackByte();
+            reg->setByte(value);
+        }
+};
+
 // Run the cpu once all instruction are defined
 void CPU::run(Vector<Instruction*>& program) {
     while (PC >= 0 && PC < program.size()) {
@@ -1177,6 +1229,8 @@ class Runner {
             if (line.rfind("INC ", 0) == 0) return new IncInstruction(cpu, line.substr(4));
             if (line.rfind("DEC ", 0) == 0) return new DecInstruction(cpu, line.substr(4));
             if (line.rfind("MOV ", 0) == 0) return new MovInstruction(cpu, line.substr(4));
+            if (line.rfind("PUSH ", 0) == 0) return new PushInstruction(cpu, line.substr(5));
+            if (line.rfind("POP ", 0) == 0) return new PopInstruction(cpu, line.substr(4));
             return nullptr; // No command found
         }
 
