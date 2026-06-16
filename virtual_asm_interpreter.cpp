@@ -1169,6 +1169,8 @@ class Runner {
                 if (instr) delete instr;    // Free allocation
                 return false;
             }
+            catch (const Errors::StackOverflowException&) { throw; }
+            catch (const Errors::UnderflowException&) { throw; }
             catch (...) {
                 std::cout << "ERROR: Invalid arguments.\n\n";
                 if (instr) delete instr;    // Free allocation
@@ -1255,6 +1257,8 @@ class Runner {
                 std::cout << "ERROR: Syntax error at line " << lineNumber << "\n\n";
                 throw; 
             }
+            catch (const Errors::StackOverflowException&) { throw; }
+            catch (const Errors::UnderflowException&) { throw; }
             catch (...) {
                 std::cout << "ERROR: Invalid arguments at line " << lineNumber << "\n\n";
                 throw; 
