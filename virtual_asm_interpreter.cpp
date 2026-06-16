@@ -1184,21 +1184,23 @@ class Runner {
             }
         }
 
-        // Read entire file into a vecotr of instruction
+        // Read entire file into a queue, then pop and process each line
         bool loadAndRunFile(const std::string& filename) {
             std::ifstream file;
             if (!openFile(filename, file)) return false;
 
+            Queue<std::string> lineQueue;
+            populateQueue(file, lineQueue);
+            file.close();
+
             Vector<Instruction*> program;
-            std::string line;
             int lineNumber = 0;
 
             try {
-                while (std::getline(file, line)) {
+                while (!lineQueue.isEmpty()) {
                     lineNumber++;
-                    std::string cleanedLine = trim(line);
-                    if (cleanedLine.empty()) continue; // Skip blank lines
-                    fileDecode(program, cleanedLine, lineNumber);
+                    std::string currentLine = lineQueue.dequeue();
+                    fileDecode(program, currentLine, lineNumber);
                 }
 
                 if (program.isEmpty()) {
@@ -1256,6 +1258,18 @@ class Runner {
 
             size_t end = str.find_last_not_of(" \t\r\n");
             return str.substr(start, end - start + 1);
+        }
+
+        // Enqueue each line from the file into a queue
+        void populateQueue(std::ifstream& file, Queue<std::string>& queue) {
+            std::string line;
+
+            while (std::getline(file, line)) {
+                std::string cleanedLine = trim(line);
+                if (cleanedLine.empty()) continue; // Skip blank lines
+                
+                queue.enqueue(cleanedLine);
+            }
         }
 
         void fileDecode(Vector<Instruction*>& program, std::string& line, int& lineNumber) {
