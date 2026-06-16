@@ -1169,8 +1169,14 @@ class Runner {
                 if (instr) delete instr;    // Free allocation
                 return false;
             }
-            catch (const Errors::StackOverflowException&) { throw; }
-            catch (const Errors::UnderflowException&) { throw; }
+            catch (const Errors::StackOverflowException&) {
+                if (instr) delete instr;    // Free allocation
+                return false;
+             }
+            catch (const Errors::UnderflowException&) { 
+                if (instr) delete instr;    // Free allocation
+                return false;
+             }
             catch (...) {
                 std::cout << "ERROR: Invalid arguments.\n\n";
                 if (instr) delete instr;    // Free allocation
@@ -1180,11 +1186,8 @@ class Runner {
 
         // Read entire file into a vecotr of instruction
         bool loadAndRunFile(const std::string& filename) {
-            std::ifstream file(filename);
-            if (!file.is_open()) {
-                std::cout << "ERROR: Could not open file '" << filename << "'\n\n";
-                return false;
-            }
+            std::ifstream file;
+            if (!openFile(filename, file)) return false;
 
             Vector<Instruction*> program;
             std::string line;
@@ -1193,7 +1196,9 @@ class Runner {
             try {
                 while (std::getline(file, line)) {
                     lineNumber++;
-                    fileDecode(program, line, lineNumber);
+                    std::string cleanedLine = trim(line);
+                    if (cleanedLine.empty()) continue; // Skip blank lines
+                    fileDecode(program, cleanedLine, lineNumber);
                 }
 
                 if (program.isEmpty()) {
@@ -1236,15 +1241,27 @@ class Runner {
             return nullptr; // No command found
         }
 
-        void fileDecode(Vector<Instruction*>& program, std::string& line, int& lineNumber) {
-            size_t start = line.find_first_not_of(" \t\r\n");
-            if (start == std::string::npos) return; // Skip empty/blank lines
-            size_t end = line.find_last_not_of(" \t\r\n");
-            std::string cleanedLine = line.substr(start, end - start + 1);
+        bool openFile(const std::string& filename, std::ifstream& file) {
+            file.open(filename);
+            if (!file.is_open()) {
+                std::cout << "ERROR: Could not open file '" << filename << "'\n\n";
+                return false;
+            }
+            return true;
+        }
 
+        std::string trim(const std::string& str) {
+            size_t start = str.find_first_not_of(" \t\r\n");
+            if (start == std::string::npos) return ""; // Return empty string if blank line
+
+            size_t end = str.find_last_not_of(" \t\r\n");
+            return str.substr(start, end - start + 1);
+        }
+
+        void fileDecode(Vector<Instruction*>& program, std::string& line, int& lineNumber) {
             try {
                 // Decode the cleaned line
-                Instruction* instr = decode(cleanedLine);
+                Instruction* instr = decode(line);
                 if (!instr) throw Errors::InvalidSyntaxException();
 
                 program.push_back(instr);
