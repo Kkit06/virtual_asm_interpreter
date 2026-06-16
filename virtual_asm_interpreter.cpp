@@ -551,6 +551,9 @@ class CPU {
         // Get reference to flags
         FlagRegister& getFlags() { return *flags; }
 
+        // Get memory
+        Memory& getMemory() { return memory; }
+
         void run(Vector<Instruction*>& program);
 };
 
@@ -729,6 +732,71 @@ class DivInstruction : public ArithmeticInstruction {
             unsigned int unsignedResult = static_cast<unsigned int>(static_cast<uint8_t>(destVal)) / static_cast<unsigned int>(static_cast<uint8_t>(srcVal));
             updateFlags(result, unsignedResult);
             dest->setValue(result);
+        }
+};
+
+// MOV <Destination Register>, <Value / Register / Memory>
+class MovInstruction : public Instruction {
+    private:
+        GeneralRegister* dest;
+        GeneralRegister* src;
+        int immediateValue;
+        enum Mode { IMMEDIATE, REGISTER, MEMORY } mode; // Enum to handle different types of input source
+
+    public:
+        MovInstruction(CPU& cpu, const std::string& args) : dest(nullptr), src(nullptr), immediateValue(0) {
+            try {
+                // Find "," from command
+                size_t commaPos = Instruction::findChar(cpu, args, ',');
+                if (args.find(',', commaPos + 1) != std::string::npos)
+                    throw Errors::InvalidSyntaxException();
+
+                // Grab destination and source
+                std::string destStr = args.substr(0, commaPos);
+                std::string srcStr = args.substr(commaPos + 1);
+                size_t destR = Instruction::findChar(cpu, destStr, 'R');
+                dest = Instruction::findRegister(cpu, destStr, destR);
+
+                // Determine the mode based on the source string
+                size_t bracketOpen = srcStr.find('[');
+                size_t bracketClose = srcStr.find(']');
+                size_t srcR = srcStr.find('R');
+
+                if (bracketOpen != std::string::npos && bracketClose != std::string::npos) {
+                    // Mode: Memory Reference e.g., [R1]
+                    mode = MEMORY;
+                    // findRegister handles "1]" gracefully because std::stoi ignores trailing non-numbers
+                    src = Instruction::findRegister(cpu, srcStr, srcR); 
+                } else if (srcR != std::string::npos) {
+                    // Mode: Register to Register e.g., R1
+                    mode = REGISTER;
+                    src = Instruction::findRegister(cpu, srcStr, srcR);
+                } else {
+                    // Mode: Immediate value e.g., 10
+                    mode = IMMEDIATE;
+                    immediateValue = std::stoi(srcStr);
+                }
+            } catch (...) {
+                throw;
+            }
+        }
+
+        void execute(CPU& cpu) override {
+            if (!dest) return;
+
+            switch (mode) {
+                case IMMEDIATE:
+                    dest->setValue(immediateValue);
+                    break;
+                case REGISTER:
+                    dest->setValue(src->getValue());
+                    break;
+                case MEMORY:
+                    int address = src->getValue();
+                    int memoryValue = cpu.getMemory().getValue(address);
+                    dest->setValue(memoryValue);
+                    break;
+            }
         }
 };
 
@@ -1108,6 +1176,7 @@ class Runner {
             if (line.rfind("SHR ", 0) == 0) return new ShrInstruction(cpu, line.substr(4));
             if (line.rfind("INC ", 0) == 0) return new IncInstruction(cpu, line.substr(4));
             if (line.rfind("DEC ", 0) == 0) return new DecInstruction(cpu, line.substr(4));
+            if (line.rfind("MOV ", 0) == 0) return new MovInstruction(cpu, line.substr(4));
             return nullptr; // No command found
         }
 
