@@ -583,7 +583,6 @@ class Instruction {
         }
 };
 
-// ----- ARITHMETIC -----
 // Arithmetic Intermediate Class (ADD, SUB, MUL, DIV)
 class ArithmeticInstruction : public Instruction {
     protected:
@@ -1040,6 +1039,59 @@ class DecInstruction : public IncDecInstruction {
         }
 };
 
+// PUSH <Register>
+class PushInstruction : public Instruction {
+    private:
+        GeneralRegister* reg;
+
+    public:
+        PushInstruction(CPU& cpu, const std::string& regStr) : reg(nullptr) {
+            try {
+                // Check if there is only 1 parameter
+                if (regStr.find(',') != std::string::npos || regStr.find_first_not_of(" \t\r\n") == std::string::npos) throw Errors::InvalidSyntaxException();
+
+                // Find 'R' from the input argument string
+                size_t regR = Instruction::findChar(cpu, regStr, 'R');
+                reg = Instruction::findRegister(cpu, regStr, regR);
+            } catch (...) {
+                throw;
+            }
+        }
+
+        void execute(CPU& cpu) override {
+            if (!reg) return;
+            
+            // Push the register's byte value onto the CPU stack
+            cpu.pushStackByte(reg->getByte());
+        }
+};
+
+// POP <Register>
+class PopInstruction : public Instruction {
+    private:
+        GeneralRegister* reg;
+
+    public:
+        PopInstruction(CPU& cpu, const std::string& regStr) : reg(nullptr) {
+            try {
+                if (regStr.find(',') != std::string::npos || regStr.find_first_not_of(" \t\r\n") == std::string::npos) throw Errors::InvalidSyntaxException();
+
+                // Find 'R' from the input argument string
+                size_t regR = Instruction::findChar(cpu, regStr, 'R');
+                reg = Instruction::findRegister(cpu, regStr, regR);
+            } catch (...) {
+                throw;
+            }
+        }
+
+        void execute(CPU& cpu) override {
+            if (!reg) return;
+            
+            int8_t value = cpu.getStackByte();
+            reg->setByte(value);
+        }
+};
+
 // Run the cpu once all instruction are defined
 void CPU::run(Vector<Instruction*>& program) {
     while (PC >= 0 && PC < program.size()) {
@@ -1117,6 +1169,14 @@ class Runner {
                 if (instr) delete instr;    // Free allocation
                 return false;
             }
+            catch (const Errors::StackOverflowException&) {
+                if (instr) delete instr;    // Free allocation
+                return false;
+             }
+            catch (const Errors::UnderflowException&) { 
+                if (instr) delete instr;    // Free allocation
+                return false;
+             }
             catch (...) {
                 std::cout << "ERROR: Invalid arguments.\n\n";
                 if (instr) delete instr;    // Free allocation
@@ -1126,11 +1186,8 @@ class Runner {
 
         // Read entire file into a vecotr of instruction
         bool loadAndRunFile(const std::string& filename) {
-            std::ifstream file(filename);
-            if (!file.is_open()) {
-                std::cout << "ERROR: Could not open file '" << filename << "'\n\n";
-                return false;
-            }
+            std::ifstream file;
+            if (!openFile(filename, file)) return false;
 
             Vector<Instruction*> program;
             std::string line;
@@ -1139,7 +1196,9 @@ class Runner {
             try {
                 while (std::getline(file, line)) {
                     lineNumber++;
-                    fileDecode(program, line, lineNumber);
+                    std::string cleanedLine = trim(line);
+                    if (cleanedLine.empty()) continue; // Skip blank lines
+                    fileDecode(program, cleanedLine, lineNumber);
                 }
 
                 if (program.isEmpty()) {
@@ -1177,18 +1236,32 @@ class Runner {
             if (line.rfind("INC ", 0) == 0) return new IncInstruction(cpu, line.substr(4));
             if (line.rfind("DEC ", 0) == 0) return new DecInstruction(cpu, line.substr(4));
             if (line.rfind("MOV ", 0) == 0) return new MovInstruction(cpu, line.substr(4));
+            if (line.rfind("PUSH ", 0) == 0) return new PushInstruction(cpu, line.substr(5));
+            if (line.rfind("POP ", 0) == 0) return new PopInstruction(cpu, line.substr(4));
             return nullptr; // No command found
         }
 
-        void fileDecode(Vector<Instruction*>& program, std::string& line, int& lineNumber) {
-            size_t start = line.find_first_not_of(" \t\r\n");
-            if (start == std::string::npos) return; // Skip empty/blank lines
-            size_t end = line.find_last_not_of(" \t\r\n");
-            std::string cleanedLine = line.substr(start, end - start + 1);
+        bool openFile(const std::string& filename, std::ifstream& file) {
+            file.open(filename);
+            if (!file.is_open()) {
+                std::cout << "ERROR: Could not open file '" << filename << "'\n\n";
+                return false;
+            }
+            return true;
+        }
 
+        std::string trim(const std::string& str) {
+            size_t start = str.find_first_not_of(" \t\r\n");
+            if (start == std::string::npos) return ""; // Return empty string if blank line
+
+            size_t end = str.find_last_not_of(" \t\r\n");
+            return str.substr(start, end - start + 1);
+        }
+
+        void fileDecode(Vector<Instruction*>& program, std::string& line, int& lineNumber) {
             try {
                 // Decode the cleaned line
-                Instruction* instr = decode(cleanedLine);
+                Instruction* instr = decode(line);
                 if (!instr) throw Errors::InvalidSyntaxException();
 
                 program.push_back(instr);
@@ -1201,6 +1274,8 @@ class Runner {
                 std::cout << "ERROR: Syntax error at line " << lineNumber << "\n\n";
                 throw; 
             }
+            catch (const Errors::StackOverflowException&) { throw; }
+            catch (const Errors::UnderflowException&) { throw; }
             catch (...) {
                 std::cout << "ERROR: Invalid arguments at line " << lineNumber << "\n\n";
                 throw; 
