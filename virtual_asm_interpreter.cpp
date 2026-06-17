@@ -1148,6 +1148,60 @@ class LoadInstruction : public Instruction {
         }
 };
 
+// STORE
+class StoreInstruction : public Instruction {
+private:
+    GeneralRegister* src;
+    GeneralRegister* destReg;
+    int addressValue;
+    enum Mode { IMMEDIATE_ADDRESS, REGISTER_ADDRESS } mode;
+
+public:
+    StoreInstruction(CPU& cpu, const std::string& args) : src(nullptr), destReg(nullptr), addressValue(0) {
+        try {
+            size_t commaPos = Instruction::findChar(cpu, args, ',');
+            if (args.find(',', commaPos + 1) != std::string::npos)
+                throw Errors::InvalidSyntaxException();
+
+            std::string arg1 = args.substr(0, commaPos);
+            std::string arg2 = args.substr(commaPos + 1);
+
+            size_t bracketOpen = arg1.find('[');
+            size_t bracketClose = arg1.find(']');
+
+            if (bracketOpen != std::string::npos && bracketClose != std::string::npos) {
+                mode = REGISTER_ADDRESS;
+                size_t destR = arg1.find('R');
+                destReg = Instruction::findRegister(cpu, arg1, destR);
+
+                size_t srcR = Instruction::findChar(cpu, arg2, 'R');
+                src = Instruction::findRegister(cpu, arg2, srcR);
+            } else {
+                mode = IMMEDIATE_ADDRESS;
+                size_t srcR = Instruction::findChar(cpu, arg1, 'R');
+                src = Instruction::findRegister(cpu, arg1, srcR);
+
+                addressValue = std::stoi(arg2);
+            }
+        } catch (...) {
+            throw;
+        }
+    }
+
+    void execute(CPU& cpu) override {
+        if (!src) return;
+        int address = 0;
+        
+        if (mode == IMMEDIATE_ADDRESS) {
+            address = addressValue;
+        } else if (mode == REGISTER_ADDRESS) {
+            address = destReg->getValue();
+        }
+        
+        cpu.getMemory().setValue(address, src->getValue());
+    }
+};
+
 // Run the cpu once all instruction are defined
 void CPU::run(Vector<Instruction*>& program) {
     while (PC >= 0 && PC < program.size()) {
@@ -1296,6 +1350,8 @@ class Runner {
             if (line.rfind("MOV ", 0) == 0) return new MovInstruction(cpu, line.substr(4));
             if (line.rfind("PUSH ", 0) == 0) return new PushInstruction(cpu, line.substr(5));
             if (line.rfind("POP ", 0) == 0) return new PopInstruction(cpu, line.substr(4));
+            if (line.rfind("LOAD ", 0) == 0) return new LoadInstruction(cpu, line.substr(5));
+            if (line.rfind("STORE ", 0) == 0) return new StoreInstruction(cpu, line.substr(6));
             return nullptr; // No command found
         }
 
