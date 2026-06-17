@@ -1092,13 +1092,13 @@ class PopInstruction : public Instruction {
         }
 };
 
-// LOAD
+// LOAD <DestinationRegister>, <address / register>
 class LoadInstruction : public Instruction {
     private:
         GeneralRegister* dest;
         GeneralRegister* srcReg;
         int addressValue;
-        enum Mode { IMMEDIATE_ADDRESS, REGISTER_ADDRESS } mode;
+        enum Mode { IMMEDIATE_ADDRESS, REGISTER_ADDRESS } mode; // Enum to handle different conditions for source
 
     public:
         LoadInstruction(CPU& cpu, const std::string& args) : dest(nullptr), srcReg(nullptr), addressValue(0) {
@@ -1116,13 +1116,11 @@ class LoadInstruction : public Instruction {
 
                 if (bracketOpen != std::string::npos && bracketClose != std::string::npos) {
                     size_t srcR = srcStr.find('R');
-                    if (srcR != std::string::npos) {
-                        // [R2]
-                        mode = REGISTER_ADDRESS;
+                    if (srcR != std::string::npos) { 
+                        mode = REGISTER_ADDRESS;    // When source = [R2] (register)
                         srcReg = Instruction::findRegister(cpu, srcStr, srcR);
                     } else {
-                        // [20]
-                        mode = IMMEDIATE_ADDRESS;
+                        mode = IMMEDIATE_ADDRESS;   // When source = 20 (address)
                         addressValue = std::stoi(srcStr.substr(bracketOpen + 1));
                     }
                 } else {
@@ -1148,13 +1146,13 @@ class LoadInstruction : public Instruction {
         }
 };
 
-// STORE
+// STORE <Destination Register>, <address / register>
 class StoreInstruction : public Instruction {
 private:
     GeneralRegister* src;
     GeneralRegister* destReg;
     int addressValue;
-    enum Mode { IMMEDIATE_ADDRESS, REGISTER_ADDRESS } mode;
+    enum Mode { IMMEDIATE_ADDRESS, REGISTER_ADDRESS } mode; // Same as LOAD's enum
 
 public:
     StoreInstruction(CPU& cpu, const std::string& args) : src(nullptr), destReg(nullptr), addressValue(0) {
