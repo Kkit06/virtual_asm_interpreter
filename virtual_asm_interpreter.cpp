@@ -1097,9 +1097,11 @@ class LoadInstruction : public Instruction {
     private:
         GeneralRegister* dest;
         GeneralRegister* srcReg;
+        int addressValue;
+        enum Mode { IMMEDIATE_ADDRESS, REGISTER_ADDRESS } mode;
 
     public:
-        LoadInstruction(CPU& cpu, const std::string& args) : dest(nullptr), srcReg(nullptr) {
+        LoadInstruction(CPU& cpu, const std::string& args) : dest(nullptr), srcReg(nullptr), addressValue(0) {
             try {
                 size_t commaPos = Instruction::findChar(cpu, args, ',');
                 if (args.find(',', commaPos + 1) != std::string::npos)
@@ -1114,7 +1116,15 @@ class LoadInstruction : public Instruction {
 
                 if (bracketOpen != std::string::npos && bracketClose != std::string::npos) {
                     size_t srcR = srcStr.find('R');
-                    srcReg = Instruction::findRegister(cpu, srcStr, srcR);
+                    if (srcR != std::string::npos) {
+                        // [R2]
+                        mode = REGISTER_ADDRESS;
+                        srcReg = Instruction::findRegister(cpu, srcStr, srcR);
+                    } else {
+                        // [20]
+                        mode = IMMEDIATE_ADDRESS;
+                        addressValue = std::stoi(srcStr.substr(bracketOpen + 1));
+                    }
                 } else {
                     throw Errors::InvalidSyntaxException(); 
                 }
@@ -1126,7 +1136,12 @@ class LoadInstruction : public Instruction {
         void execute(CPU& cpu) override {
             if (!dest) return;
             int address = 0;
-            address = srcReg->getValue();
+            
+            if (mode == IMMEDIATE_ADDRESS) {
+                address = addressValue;
+            } else if (mode == REGISTER_ADDRESS) {
+                address = srcReg->getValue();
+            }
             
             int memoryValue = cpu.getMemory().getValue(address);
             dest->setValue(memoryValue);
