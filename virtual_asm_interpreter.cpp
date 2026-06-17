@@ -1104,8 +1104,7 @@ class LoadInstruction : public Instruction {
         LoadInstruction(CPU& cpu, const std::string& args) : dest(nullptr), srcReg(nullptr), addressValue(0) {
             try {
                 size_t commaPos = Instruction::findChar(cpu, args, ',');
-                if (args.find(',', commaPos + 1) != std::string::npos)
-                    throw Errors::InvalidSyntaxException();
+                if (args.find(',', commaPos + 1) != std::string::npos) throw Errors::InvalidSyntaxException();
 
                 std::string destStr = args.substr(0, commaPos);
                 std::string srcStr = args.substr(commaPos + 1);
@@ -1158,8 +1157,7 @@ public:
     StoreInstruction(CPU& cpu, const std::string& args) : src(nullptr), destReg(nullptr), addressValue(0) {
         try {
             size_t commaPos = Instruction::findChar(cpu, args, ',');
-            if (args.find(',', commaPos + 1) != std::string::npos)
-                throw Errors::InvalidSyntaxException();
+            if (args.find(',', commaPos + 1) != std::string::npos) throw Errors::InvalidSyntaxException();
 
             std::string arg1 = args.substr(0, commaPos);
             std::string arg2 = args.substr(commaPos + 1);
