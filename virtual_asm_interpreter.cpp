@@ -1092,6 +1092,47 @@ class PopInstruction : public Instruction {
         }
 };
 
+// LOAD
+class LoadInstruction : public Instruction {
+    private:
+        GeneralRegister* dest;
+        GeneralRegister* srcReg;
+
+    public:
+        LoadInstruction(CPU& cpu, const std::string& args) : dest(nullptr), srcReg(nullptr) {
+            try {
+                size_t commaPos = Instruction::findChar(cpu, args, ',');
+                if (args.find(',', commaPos + 1) != std::string::npos)
+                    throw Errors::InvalidSyntaxException();
+
+                std::string destStr = args.substr(0, commaPos);
+                std::string srcStr = args.substr(commaPos + 1);
+                size_t destR = Instruction::findChar(cpu, destStr, 'R');
+                dest = Instruction::findRegister(cpu, destStr, destR);
+                size_t bracketOpen = srcStr.find('[');
+                size_t bracketClose = srcStr.find(']');
+
+                if (bracketOpen != std::string::npos && bracketClose != std::string::npos) {
+                    size_t srcR = srcStr.find('R');
+                    srcReg = Instruction::findRegister(cpu, srcStr, srcR);
+                } else {
+                    throw Errors::InvalidSyntaxException(); 
+                }
+            } catch (...) {
+                throw;
+            }
+        }
+
+        void execute(CPU& cpu) override {
+            if (!dest) return;
+            int address = 0;
+            address = srcReg->getValue();
+            
+            int memoryValue = cpu.getMemory().getValue(address);
+            dest->setValue(memoryValue);
+        }
+};
+
 // Run the cpu once all instruction are defined
 void CPU::run(Vector<Instruction*>& program) {
     while (PC >= 0 && PC < program.size()) {
