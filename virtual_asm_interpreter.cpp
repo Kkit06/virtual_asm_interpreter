@@ -1145,13 +1145,13 @@ class LoadInstruction : public Instruction {
         }
 };
 
-// STORE <Destination Register>, <address / register>
+// STORE <Destination Register>, <[address register] / address value>
 class StoreInstruction : public Instruction {
 private:
     GeneralRegister* src;
     GeneralRegister* destReg;
     int addressValue;
-    enum Mode { IMMEDIATE_ADDRESS, REGISTER_ADDRESS } mode; // Same as LOAD's enum
+    enum Mode { IMMEDIATE_ADDRESS, REGISTER_ADDRESS } mode;
 
 public:
     StoreInstruction(CPU& cpu, const std::string& args) : src(nullptr), destReg(nullptr), addressValue(0) {
@@ -1162,21 +1162,18 @@ public:
             std::string arg1 = args.substr(0, commaPos);
             std::string arg2 = args.substr(commaPos + 1);
 
-            size_t bracketOpen = arg1.find('[');
-            size_t bracketClose = arg1.find(']');
+            size_t srcR = Instruction::findChar(cpu, arg1, 'R');
+            src = Instruction::findRegister(cpu, arg1, srcR);
+
+            size_t bracketOpen = arg2.find('[');
+            size_t bracketClose = arg2.find(']');
 
             if (bracketOpen != std::string::npos && bracketClose != std::string::npos) {
                 mode = REGISTER_ADDRESS;
-                size_t destR = arg1.find('R');
-                destReg = Instruction::findRegister(cpu, arg1, destR);
-
-                size_t srcR = Instruction::findChar(cpu, arg2, 'R');
-                src = Instruction::findRegister(cpu, arg2, srcR);
+                size_t destR = arg2.find('R');
+                destReg = Instruction::findRegister(cpu, arg2, destR);
             } else {
                 mode = IMMEDIATE_ADDRESS;
-                size_t srcR = Instruction::findChar(cpu, arg1, 'R');
-                src = Instruction::findRegister(cpu, arg1, srcR);
-
                 addressValue = std::stoi(arg2);
             }
         } catch (...) {
@@ -1191,6 +1188,7 @@ public:
         if (mode == IMMEDIATE_ADDRESS) {
             address = addressValue;
         } else if (mode == REGISTER_ADDRESS) {
+            if (!destReg) return;
             address = destReg->getValue();
         }
         
