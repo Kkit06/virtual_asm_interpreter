@@ -1227,11 +1227,7 @@ class Runner {
             int lineNumber = 0;
 
             try {
-                while (!lineQueue.isEmpty()) {
-                    lineNumber++;
-                    std::string currentLine = lineQueue.dequeue();
-                    fileDecode(program, currentLine, lineNumber);
-                }
+                while (!lineQueue.isEmpty()) dequeueAndDecode(lineQueue, program, lineNumber);
 
                 if (program.isEmpty()) {
                     std::cout << "WARNING: File is empty.\n\n";
@@ -1247,6 +1243,11 @@ class Runner {
 
                 cleanup(program);
                 return true;
+            }
+            catch (const Errors::IndexOutOfBoundsException&) {
+                std::cout << "ERROR: Memory access out of bounds.\n\n";
+                cleanup(program);
+                return false;
             }
             catch (...) {
                 cleanup(program);
@@ -1329,6 +1330,12 @@ class Runner {
                 std::cout << "ERROR: Invalid arguments at line " << lineNumber << "\n\n";
                 throw; 
             }
+        }
+
+        void dequeueAndDecode(Queue<std::string>& lineQueue, Vector<Instruction*>& program, int& lineNumber) {
+            lineNumber++;
+            std::string currentLine = lineQueue.dequeue();
+            fileDecode(program, currentLine, lineNumber);
         }
 
         void cleanup(Vector<Instruction*>& program) {
