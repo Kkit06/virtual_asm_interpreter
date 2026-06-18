@@ -1270,6 +1270,11 @@ class Runner {
                 if (instr) delete instr;    // Free allocation
                 return false;
             }
+            catch (const Errors::IndexOutOfBoundsException&) {
+                std::cout << "ERROR: Memory access out of bounds.\n\n";
+                if (instr) delete instr;    // Free allocation
+                return false;
+            }
             catch (const Errors::InvalidSyntaxException&) {
                 std::cout << "ERROR: Invalid Syntax / Missing arguments.\n\n";
                 if (instr) delete instr;    // Free allocation
@@ -1320,6 +1325,11 @@ class Runner {
 
                 cleanup(program);
                 return true;
+            }
+            catch (const Errors::IndexOutOfBoundsException&) {
+                std::cout << "ERROR: Memory access out of bounds.\n\n";
+                cleanup(program);
+                return false;
             }
             catch (...) {
                 cleanup(program);
