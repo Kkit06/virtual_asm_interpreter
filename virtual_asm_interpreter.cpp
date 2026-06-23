@@ -331,19 +331,6 @@ class Register {
         void setByte(int8_t newValue) { value = newValue; }
         void setValue(int newValue) { value = static_cast<int8_t>(newValue); }
 
-        // Get register value in 8 bit binary
-        void getBinary(Queue<int> bits) const {
-            uint8_t val = static_cast<uint8_t>(value);
-            for (int i = 7; i >= 0; i--) {
-                bits.enqueue((val >> i) & 1); 
-            }
-        }
-
-        // Used to update ZF
-        bool isZero() const { 
-            return value == 0;
-        }
-
     private:
         int8_t value;  // 1-byte signed value stored (-128 to 127)
 };
@@ -398,22 +385,10 @@ class Memory {
     public:
         Memory() : data(64, 0) {} // Create data vector with 64 zeros
 
-        // Get the address byte
-        int8_t getByte(int address) const {
-            if (address < 0 || address >= 64) throw Errors::IndexOutOfBoundsException();
-            return data[address];
-        }
-
         // Get the address value
         int getValue(int address) const {
             if (address < 0 || address >= 64) throw Errors::IndexOutOfBoundsException();
             return static_cast<int>(data[address]);
-        }
-
-        // Sets int8_t at address when it is valid
-        void setByte(int address, int8_t value) {
-            if (address < 0 || address >= 64) throw Errors::IndexOutOfBoundsException();
-            data.replace(address, value);
         }
 
         // Sets int at address when it is valid
@@ -516,16 +491,6 @@ class CPU {
             }
         }
 
-        int getStackValue() {
-            try {
-                return static_cast<int>(stack.pop()); 
-            } 
-            catch (const Errors::UnderflowException&) {
-                std::cout << "ERROR: Stack is empty.\n\n";
-                throw;
-            }
-        }
-
         // Push value into cpu's stack
         void pushStackByte(int8_t value) {
             try {
@@ -535,10 +500,6 @@ class CPU {
                 std::cout << "ERROR: Stack Overflow.\n\n";
                 throw;
             }
-        }
-
-        void pushStackValue(int value) {
-            pushStackByte(static_cast<int8_t>(value));
         }
 
         // Get and set the value of the Program Counter.
