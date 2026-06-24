@@ -577,7 +577,8 @@ class ArithmeticInstruction : public Instruction {
 
                 // Find "R" from destination register
                 size_t destR = Instruction::findChar(cpu, destStr, 'R');
-                dest = Instruction::findRegister(cpu, destStr, destR);
+
+                dest = Instruction::findRegister(cpu, destStr,destR);
 
                 // Find "R" from source register, if entered literal value, useImmediate = true
                 size_t srcR = srcStr.find('R');
@@ -1157,6 +1158,48 @@ public:
     }
 };
 
+class ResetInstruction : public Instruction {
+private:
+    std::string targetFlag;
+    FlagRegister& flags;
+
+public:
+    ResetInstruction(CPU& cpu, const std::string& flagStr)
+        : flags(cpu.getFlags()) {
+
+        targetFlag = flagStr;
+
+        size_t start = targetFlag.find_first_not_of(" \t");
+        size_t end = targetFlag.find_last_not_of(" \t");
+
+        if (start == std::string::npos)
+            throw Errors::InvalidSyntaxException();
+
+        targetFlag = targetFlag.substr(start, end - start + 1);
+
+        if (targetFlag != "CF" &&
+            targetFlag != "ZF" &&
+            targetFlag != "UF" &&
+            targetFlag != "OF")
+            throw Errors::InvalidSyntaxException();
+    }
+
+    void execute(CPU&) override {
+
+        if (targetFlag == "CF")
+            flags.setCF(false);
+
+        else if (targetFlag == "ZF")
+            flags.setZF(false);
+
+        else if (targetFlag == "UF")
+            flags.setUF(false);
+
+        else if (targetFlag == "OF")
+            flags.setOF(false);
+    }
+};
+
 // Run the cpu once all instruction are defined
 void CPU::run(Vector<Instruction*>& program) {
     while (PC >= 0 && PC < program.size()) {
@@ -1317,6 +1360,7 @@ class Runner {
             if (line.rfind("POP ", 0) == 0) return new PopInstruction(cpu, line.substr(4));
             if (line.rfind("LOAD ", 0) == 0) return new LoadInstruction(cpu, line.substr(5));
             if (line.rfind("STORE ", 0) == 0) return new StoreInstruction(cpu, line.substr(6));
+            if (line.rfind("RESET ", 0) == 0) return new ResetInstruction(cpu, line.substr(6));
             return nullptr; // No command found
         }
 
