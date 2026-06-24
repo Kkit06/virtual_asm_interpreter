@@ -1215,7 +1215,89 @@ class Runner {
     public:
         Runner(CPU& externalCpu) : cpu(externalCpu) {}
 
-        // Read entire file, execute it, display status block, and terminate
+        void run() {
+            bool shouldDisplay = false;
+            std::string input;
+
+            while (true) {
+                std::cout << "> ";
+                if (!std::getline(std::cin, input) || input == "exit") break;
+
+                std::string command = input;
+                size_t first = command.find_first_not_of(" \t\r\n");
+                if (first != std::string::npos) {
+                    command = command.substr(first);
+                }
+
+                if (command.find("run ") == 0)
+                    shouldDisplay = loadAndRunFile(command.substr(4));
+                else if (command.find("status") == 0)
+                    cpu.display();
+                else if (command.find("reset") == 0) {
+                    cpu.reset();
+                    shouldDisplay = true;
+                }
+                else
+                    shouldDisplay = executeCommand(input);
+
+                if (shouldDisplay) cpu.display();
+            }
+        }
+
+        // Convert single command into a single element vector
+        bool executeCommand(const std::string& cmd) {
+            if (cmd.empty()) return false;
+
+            Instruction* instr = nullptr;
+
+            try {
+                instr = decode(cmd);
+
+                if (instr) {
+                    Vector<Instruction*> program;
+                    program.push_back(instr);
+
+                    cpu.setPC(0);
+                    cpu.run(program);   
+                    delete instr;           // Free allocation
+                    return true;
+                }
+                else {
+                    std::cout << "ERROR: Syntax Error / Unknown instruction.\n\n";
+                    return false;
+                }
+            }
+            catch (const Errors::RegisterOutOfBoundsException&) {
+                std::cout << "ERROR: Invalid register\n\n";
+                if (instr) delete instr;    // Free allocation
+                return false;
+            }
+            catch (const Errors::IndexOutOfBoundsException&) {
+                std::cout << "ERROR: Memory access out of bounds.\n\n";
+                if (instr) delete instr;    // Free allocation
+                return false;
+            }
+            catch (const Errors::InvalidSyntaxException&) {
+                std::cout << "ERROR: Invalid Syntax / Missing arguments.\n\n";
+                if (instr) delete instr;    // Free allocation
+                return false;
+            }
+            catch (const Errors::StackOverflowException&) {
+                if (instr) delete instr;    // Free allocation
+                return false;
+             }
+            catch (const Errors::UnderflowException&) { 
+                if (instr) delete instr;    // Free allocation
+                return false;
+             }
+            catch (...) {
+                std::cout << "ERROR: Invalid arguments.\n\n";
+                if (instr) delete instr;    // Free allocation
+                return false;
+            }
+        }
+
+        // Read entire file into a queue, then pop and process each line
         bool loadAndRunFile(const std::string& filename) {
             std::ifstream file;
             if (!openFile(filename, file)) return false;
@@ -1228,7 +1310,11 @@ class Runner {
             int lineNumber = 0;
 
             try {
-                while (!lineQueue.isEmpty()) dequeueAndDecode(lineQueue, program, lineNumber);
+                while (!lineQueue.isEmpty()) {
+                    lineNumber++;
+                    std::string currentLine = lineQueue.dequeue();
+                    fileDecode(program, currentLine, lineNumber);
+                }
 
                 if (program.isEmpty()) {
                     std::cout << "WARNING: File is empty.\n\n";
@@ -1238,9 +1324,6 @@ class Runner {
                 // Reset CPU and run the instructions
                 cpu.reset();
                 cpu.run(program);
-
-                // Output final status block upon completion
-                cpu.display();
 
                 cleanup(program);
                 return true;
@@ -1334,12 +1417,6 @@ class Runner {
             }
         }
 
-        void dequeueAndDecode(Queue<std::string>& lineQueue, Vector<Instruction*>& program, int& lineNumber) {
-            lineNumber++;
-            std::string currentLine = lineQueue.dequeue();
-            fileDecode(program, currentLine, lineNumber);
-        }
-
         void cleanup(Vector<Instruction*>& program) {
             for (int i = 0; i < program.size(); ++i) {
                 delete program[i];
@@ -1348,20 +1425,16 @@ class Runner {
 };
 
 // ----- MAIN -----
-int main(int argc, char* argv[]) {
-    // Ensure the user passes only one argument
-    if (argc != 2) {
-        std::cerr << "Usage: " << argv[0] << " <filename.asm>\n";
-        return 1;
-    }
-
+int main() {
     FlagRegister flagsRegister;
     CPU virtualCpu(&flagsRegister);
-
+    
     // Aggregate the CPU inside the runner framework
     Runner interpreter(virtualCpu); 
-
-    if (!interpreter.loadAndRunFile(argv[1])) return 1; // Exit with error if file loading/running failed
-
+    
+    std::cout << "Virtual ASM Interpreter ('exit' to quit)\n";
+    std::cout << "-------------------------------------------\n";
+    interpreter.run();
+    
     return 0;
 }
