@@ -594,7 +594,7 @@ class ArithmeticInstruction : public Instruction {
         }
 };
 
-// ADD <Source Register>, <Value / Register>
+// ADD <Destination Register>, <Value / Register>
 class AddInstruction : public ArithmeticInstruction {
     public:
         AddInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
@@ -618,7 +618,7 @@ class AddInstruction : public ArithmeticInstruction {
         }
 };
 
-// SUB <Source Register>, <Value / Register>
+// SUB <Destination Register>, <Value / Register>
 class SubInstruction : public ArithmeticInstruction {
     public:
         SubInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
@@ -642,7 +642,7 @@ class SubInstruction : public ArithmeticInstruction {
         }
 };
 
-// MUL <Source Register>, <Value / Register>
+// MUL <Destination Register>, <Value / Register>
 class MulInstruction : public ArithmeticInstruction {
     public:
         MulInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
@@ -666,7 +666,7 @@ class MulInstruction : public ArithmeticInstruction {
         }
 };
 
-// DIV <Source Register>, <Value / Register>
+// DIV <Destination Register>, <Value / Register>
 class DivInstruction : public ArithmeticInstruction {
     public:
         DivInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
