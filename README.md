@@ -1,6 +1,6 @@
 <div align="center">
   
-<img width="360" alt="logo" src="https://github.com/user-attachments/assets/f4e494e6-a56f-4581-9638-8edfe293a50c" />
+<img width="360" alt="logo" src="https://github.com/user-attachments/assets/e957013c-785d-43d1-8f38-de09966fb1f3" />
 <h3>Virtual ASM Interpreter</h3>
 
 </div>
