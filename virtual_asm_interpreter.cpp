@@ -180,14 +180,6 @@ class Vector {
         size_t currentSize;     // Number of elements currently in the vector
         size_t capacity;        // Total space currently allocated
 
-        // Reset null vector to default 
-        void reinitialize() {
-            delete[] data;
-            capacity = 4;
-            currentSize = 0;
-            data = new T[capacity];
-        }
-
         // Called when array is full to double the size
         void resize() {
             if (capacity > 1073741823) throw Errors::MaxCapacityException();
