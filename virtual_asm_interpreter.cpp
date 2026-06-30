@@ -332,7 +332,7 @@ class FlagRegister {
         int getCF() const { return static_cast<int>(CF); }
         int getZF() const { return static_cast<int>(ZF); }
 
-        // For RESET instruction to reset all flags
+        // Reset all flags
         void resetFlags() {
             OF = UF = CF = ZF = false;
         }
