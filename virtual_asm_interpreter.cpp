@@ -1006,7 +1006,7 @@ class PopInstruction : public Instruction {
         }
 };
 
-// LOAD <DestinationRegister>, <address / register>
+// LOAD <DestinationRegister>, <[address] / [register]>
 class LoadInstruction : public Instruction {
     private:
         GeneralRegister* dest;
@@ -1059,7 +1059,7 @@ class LoadInstruction : public Instruction {
         }
 };
 
-// STORE <Destination Register>, <[address register] / address value>
+// STORE <Destination Register>, <address / [register]>
 class StoreInstruction : public Instruction {
 private:
     GeneralRegister* src;
