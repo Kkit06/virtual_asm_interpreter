@@ -125,38 +125,6 @@ class Vector {
             data[currentSize++] = value;
         }
 
-        // Remove last element, data will not be deleted but replaced in the future
-        void pop_back() {
-            if (isEmpty()) throw Errors::IndexOutOfBoundsException();
-            currentSize--;
-        }
-
-        // Insert a value into a certain position
-        void insert(int index, const T& value) {
-            if (index < 0 || index > currentSize) throw Errors::IndexOutOfBoundsException();
-            if (currentSize == capacity) resize();
-
-            // Shift elements to the right to make a hole
-            for (size_t i = currentSize; i > index; i--) {
-                data[i] = data[i - 1];
-            }
-
-            data[index] = value;
-            currentSize++;
-        }
-
-        // Remove the value at index and shift right position to left
-        void remove(int index) {
-            if (index < 0 || index >= currentSize || currentSize == 0) throw Errors::IndexOutOfBoundsException();
-
-            // Shift elements to the left to fill the gap
-            for (size_t i = index; i < currentSize - 1; i++) {
-                data[i] = data[i + 1];
-            }
-
-            currentSize--;
-        }
-
         // Replace value at index with new value
         void replace(int index, const T& value) {
             if (index < 0 || index >= currentSize) throw Errors::IndexOutOfBoundsException();
@@ -191,13 +159,6 @@ class Vector {
                 other.capacity = 0;
             }
             return *this;
-        }
-
-        // Move Constructor
-        Vector(Vector&& other) noexcept : data(other.data), currentSize(other.currentSize), capacity(other.capacity) {
-            other.data = nullptr;
-            other.currentSize = 0;
-            other.capacity = 0;
         }
 
         // Returns current number of elements
@@ -550,8 +511,7 @@ class ArithmeticInstruction : public Instruction {
         GeneralRegister* dest;
         GeneralRegister* src;
 
-        // When source register slot in command is not a register (ADD R2, R1) but a literal value (67).
-        // E.g. (ADD R2, 67), immediateValue = 67, useImmediate = true;
+        // All arithmetic instructions support immediate values as source
         int immediateValue;
         bool useImmediate;
 
@@ -594,7 +554,7 @@ class ArithmeticInstruction : public Instruction {
         }
 };
 
-// ADD <Source Register>, <Value / Register>
+// ADD <Destination Register>, <Value / Register>
 class AddInstruction : public ArithmeticInstruction {
     public:
         AddInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
@@ -618,7 +578,7 @@ class AddInstruction : public ArithmeticInstruction {
         }
 };
 
-// SUB <Source Register>, <Value / Register>
+// SUB <Destination Register>, <Value / Register>
 class SubInstruction : public ArithmeticInstruction {
     public:
         SubInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
@@ -642,7 +602,7 @@ class SubInstruction : public ArithmeticInstruction {
         }
 };
 
-// MUL <Source Register>, <Value / Register>
+// MUL <Destination Register>, <Value / Register>
 class MulInstruction : public ArithmeticInstruction {
     public:
         MulInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
@@ -666,7 +626,7 @@ class MulInstruction : public ArithmeticInstruction {
         }
 };
 
-// DIV <Source Register>, <Value / Register>
+// DIV <Destination Register>, <Value / Register>
 class DivInstruction : public ArithmeticInstruction {
     public:
         DivInstruction(CPU& cpu, const std::string& args) : ArithmeticInstruction(cpu, args) {}
