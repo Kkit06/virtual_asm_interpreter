@@ -1161,6 +1161,7 @@ void CPU::run(Vector<Instruction*>& program) {
         SI = stack.getTopIndex() + 1;
     }
 }
+
 // ----- INTERPRETER -----
 class Runner {
     public:
