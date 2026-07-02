@@ -80,15 +80,9 @@ The interpreter parses operations as uppercase directives followed by exact oper
 
 | Instruction Syntax | Allowed Arguments | Behavior Description |
 | --- | --- | --- |
-| **`MOV`** `Dest, Src` | `Dest`: Register (`R0-R7`) <br>
-
-<br>`Src`: Register, Value, or `[Register]` | Copies the source item value into the destination register. Can parse indirect memory lookups like `MOV R1, [R2]`. |
-| **`LOAD`** `Dest, [Src]` | `Dest`: Register (`R0-R7`) <br>
-
-<br>`Src`: Absolute address integer (`0-63`) or Register | Extracts the 1-byte value from memory index location `Src` and copies it into target `Dest`. Examples: `LOAD R0, [45]` or `LOAD R0, [R1]`. |
-| **`STORE`** `Src, Dest` | `Src`: Register (`R0-R7`) <br>
-
-<br>`Dest`: Absolute address integer (`0-63`) or `[Register]` | Saves the value found inside register `Src` down into physical memory address `Dest`. Examples: `STORE R0, 45` or `STORE R0, [R1]`. |
+| **`MOV`** `Dest, Src` | `Dest`: Register (`R0-R7`)<br>`Src`: Register, Value, or `[Register]` | Copies the source item value into the destination register. Can parse indirect memory lookups like `MOV R1, [R2]`. |
+| **`LOAD`** `Dest, [Src]` | `Dest`: Register (`R0-R7`)<br>`Src`: Absolute address integer (`0-63`) or Register | Extracts the 1-byte value from memory index location `Src` and copies it into target `Dest`. Examples: `LOAD R0, [45]` or `LOAD R0, [R1]`. |
+| **`STORE`** `Src, Dest` | `Src`: Register (`R0-R7`)<br>`Dest`: Absolute address integer (`0-63`) or `[Register]` | Saves the value found inside register `Src` down into physical memory address `Dest`. Examples: `STORE R0, 45` or `STORE R0, [R1]`. |
 | **`PUSH`** `Reg` | `Reg`: Register (`R0-R7`) | Appends the 1-byte state value of the given register onto the top of the stack. Throws a Stack Overflow error if size exceeds 8 bytes. |
 | **`POP`** `Reg` | `Reg`: Register (`R0-R7`) | Extracts the top byte value sitting on the stack, removes it, and writes it directly into target register `Reg`. |
 
